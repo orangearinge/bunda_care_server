@@ -1,13 +1,6 @@
-from flask import Flask, jsonify
+from app import create_app
 
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return jsonify({
-        "message": "Backend Flask berjalan dengan baik!",
-        "status": "OK"
-    })
+app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True, port=5000)
