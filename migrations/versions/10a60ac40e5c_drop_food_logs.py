@@ -16,8 +16,11 @@ depends_on = None
 
 
 def upgrade():
-    # Drop table food_logs
-    op.drop_table("food_logs")
+    # Drop table food_logs if it exists
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    if insp.has_table('food_logs'):
+        op.drop_table("food_logs")
 
 
 def downgrade():

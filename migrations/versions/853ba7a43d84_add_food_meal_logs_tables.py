@@ -48,15 +48,18 @@ def upgrade():
     op.create_index('ix_food_meal_logs_user_logged', 'food_meal_logs', ['user_id', 'logged_at'])
     op.create_index('ix_food_meal_log_items_meal', 'food_meal_log_items', ['meal_log_id'])
 
-    # Ensure FK on existing food_logs.source_menu_id -> food_menus.id
-    op.create_foreign_key(
-        'fk_food_logs_source_menu',
-        'food_logs',
-        'food_menus',
-        ['source_menu_id'],
-        ['id'],
-        ondelete='SET NULL'
-    )
+    # Ensure FK on existing food_logs.source_menu_id -> food_menus.id (only if table exists)
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    if insp.has_table('food_logs'):
+        op.create_foreign_key(
+            'fk_food_logs_source_menu',
+            'food_logs',
+            'food_menus',
+            ['source_menu_id'],
+            ['id'],
+            ondelete='SET NULL'
+        )
 
 
 def downgrade():
