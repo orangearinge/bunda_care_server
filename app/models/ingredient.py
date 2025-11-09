@@ -1,5 +1,4 @@
 from app.extensions import db
-from sqlalchemy.dialects.mysql import JSON
 
 class FoodIngredient(db.Model):
     __tablename__ = "food_ingredients"
@@ -11,3 +10,4 @@ class FoodIngredient(db.Model):
     protein_g = db.Column(db.Numeric(8,2), nullable=False, default=0)
     carbs_g = db.Column(db.Numeric(8,2), nullable=False, default=0)
     fat_g = db.Column(db.Numeric(8,2), nullable=False, default=0)
+
