@@ -1,0 +1,63 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+egg-info/
+*.egg
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage*
+.tox/
+.nox/
+
+# Type checkers / linters
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Local data / databases
+*.sqlite3
+*.db
+instance/
+
+# Flask / App specifics
+# Keep Alembic migrations tracked
+# (do NOT ignore migrations/)
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage reports
+htmlcov/
+
+# Other
+*.swp
+*.swo
