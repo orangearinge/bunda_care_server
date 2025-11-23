@@ -212,13 +212,20 @@ def recommendation_handler():
             _add_from_iter(body.get("items"))
 
     boost_per_hit = arg_int("boost_per_hit", 400, min_value=0, max_value=1000)
+
     _req = request.args.get("require_detected")
     require_detected = (bool(detected_ids) if _req is None else (_req.lower() == "true"))
-    boost_by_quantity = (request.args.get("boost_by_quantity", "true").lower() == "true")
+
+    boost_by_quantity = (       
+    request.args.get("boost_by_quantity", "true").lower() == "true")
+
     boost_per_100g = arg_int("boost_per_100g", 5, min_value=0, max_value=10000)
     min_hits = arg_int("min_hits", 1, min_value=1, max_value=10)
+
     _ho = request.args.get("hide_options")
     hide_options = (bool(detected_ids) if _ho is None else (_ho.lower() == "true"))
+
+    
 
     def menu_ok(m: FoodMenu):
         tags = set((m.tags or "").lower().split(","))
