@@ -483,3 +483,111 @@ def list_meal_log_handler():
             ]
         })
     return ok({"items": payload})
+
+
+def create_menu_handler():
+    data = json_body()
+    name = (data.get("name") or "").strip()
+    meal_type = (data.get("meal_type") or "").strip().upper()
+    if not name or not meal_type:
+        return error("VALIDATION_ERROR", "Name and meal_type are required", 400)
+    
+    try:
+        menu = FoodMenu(
+            name=name,
+            meal_type=meal_type,
+            tags=data.get("tags", ""),
+            is_active=data.get("is_active", True)
+        )
+        db.session.add(menu)
+        db.session.flush()
+
+        ingredients = data.get("ingredients", [])
+        for item in ingredients:
+            iid = item.get("ingredient_id")
+            qty = item.get("quantity_g")
+            if iid and qty:
+                db.session.add(FoodMenuIngredient(
+                    menu_id=menu.id,
+                    ingredient_id=iid,
+                    quantity_g=qty
+                ))
+        
+        db.session.commit()
+        return ok({"id": menu.id, "message": "Menu created successfully"}, 201)
+    except Exception as e:
+        db.session.rollback()
+        return error("UNKNOWN_ERROR", str(e), 500)
+
+def update_menu_handler(id):
+    menu = FoodMenu.query.get(id)
+    if not menu:
+        return error("NOT_FOUND", "Menu not found", 404)
+    
+    data = json_body()
+    if "name" in data:
+        menu.name = data["name"]
+    if "meal_type" in data:
+        menu.meal_type = data["meal_type"].upper()
+    if "tags" in data:
+        menu.tags = data["tags"]
+    if "is_active" in data:
+        menu.is_active = data["is_active"]
+    
+    try:
+        if "ingredients" in data:
+            FoodMenuIngredient.query.filter_by(menu_id=id).delete()
+            for item in data["ingredients"]:
+                iid = item.get("ingredient_id")
+                qty = item.get("quantity_g")
+                if iid and qty:
+                    db.session.add(FoodMenuIngredient(
+                        menu_id=menu.id,
+                        ingredient_id=iid,
+                        quantity_g=qty
+                    ))
+        
+        db.session.commit()
+        return ok({"id": menu.id, "message": "Menu updated successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return error("UNKNOWN_ERROR", str(e), 500)
+
+def delete_menu_handler(id):
+    menu = FoodMenu.query.get(id)
+    if not menu:
+        return error("NOT_FOUND", "Menu not found", 404)
+    
+    try:
+        FoodMenuIngredient.query.filter_by(menu_id=id).delete()
+        db.session.delete(menu)
+        db.session.commit()
+        return ok({"message": "Menu deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return error("UNKNOWN_ERROR", str(e), 500)
+
+def get_menu_detail_handler(id):
+    menu = FoodMenu.query.get(id)
+    if not menu:
+        return error("NOT_FOUND", "Menu not found", 404)
+    
+    ingredients = []
+    menu_ingredients = FoodMenuIngredient.query.filter_by(menu_id=id).all()
+    for mi in menu_ingredients:
+        ing = FoodIngredient.query.get(mi.ingredient_id)
+        if ing:
+            ingredients.append({
+                "ingredient_id": ing.id,
+                "name": ing.name,
+                "quantity_g": float(mi.quantity_g)
+            })
+    
+    return ok({
+        "id": menu.id,
+        "name": menu.name,
+        "meal_type": menu.meal_type,
+        "tags": menu.tags,
+        "is_active": menu.is_active,
+        "ingredients": ingredients
+    })

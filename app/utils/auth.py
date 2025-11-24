@@ -39,4 +39,23 @@ def require_auth(f):
         return f(*args, **kwargs)
     return wrapper
 
-__all__ = ["hash_password", "create_token", "require_auth", "check_password_hash"]
+
+def require_admin(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": {"code": "UNAUTHORIZED", "message": "Missing Bearer token"}}), 401
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = decode_token(token)
+            request.user_id = int(payload["sub"])  # type: ignore
+            request.user_role = payload.get("role")  # type: ignore
+            if str(request.user_role).upper() != "ADMIN":
+                return jsonify({"error": {"code": "FORBIDDEN", "message": "Admin access required"}}), 403
+        except Exception:
+            return jsonify({"error": {"code": "UNAUTHORIZED", "message": "Invalid token"}}), 401
+        return f(*args, **kwargs)
+    return wrapper
+
+__all__ = ["hash_password", "create_token", "require_auth", "require_admin", "check_password_hash"]

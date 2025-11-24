@@ -1,0 +1,143 @@
+{
+  "info": {
+    "name": "Bunda Care Admin API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"adminpass\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ingredient",
+      "item": [
+        {
+          "name": "Create Ingredient",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/ingredients", "host": ["{{baseUrl}}"], "path": ["ingredients"]},
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Test Ingredient\",\n  \"calories\": 100,\n  \"protein_g\": 10,\n  \"carbs_g\": 5,\n  \"fat_g\": 2\n}"}
+          },
+          "response": []
+        },
+        {
+          "name": "List Ingredients",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/ingredients", "host": ["{{baseUrl}}"], "path": ["ingredients"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu",
+      "item": [
+        {
+          "name": "Create Menu",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/menus", "host": ["{{baseUrl}}"], "path": ["menus"]},
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Breakfast Menu\",\n  \"meal_type\": \"BREAKFAST\",\n  \"tags\": \"healthy\",\n  \"is_active\": true,\n  \"ingredients\": [\n    {\"ingredient_id\": {{ingredientId}}, \"quantity_g\": 100}\n  ]\n}"}
+          },
+          "response": []
+        },
+        {
+          "name": "Get Menu Detail",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/menus/{{menuId}}", "host": ["{{baseUrl}}"], "path": ["menus", "{{menuId}}"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/admin/users", "host": ["{{baseUrl}}"], "path": ["admin", "users"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": {"raw": "{{baseUrl}}/admin/users/{{userId}}/role", "host": ["{{baseUrl}}"], "path": ["admin", "users", "{{userId}}", "role"]},
+            "body": {"mode": "raw", "raw": "{\"role\": \"ADMIN\"}"}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Stats",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/admin/dashboard/stats", "host": ["{{baseUrl}}"], "path": ["admin", "dashboard", "stats"]}
+          },
+          "response": []
+        },
+        {
+          "name": "User Growth",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{adminToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/admin/dashboard/user-growth", "host": ["{{baseUrl}}"], "path": ["admin", "dashboard", "user-growth"]}
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:5000"},
+    {"key": "adminToken", "value": ""},
+    {"key": "ingredientId", "value": ""},
+    {"key": "menuId", "value": ""},
+    {"key": "userId", "value": ""}
+  ]
+}

@@ -1,4 +1,5 @@
 from app.extensions import db
+from datetime import datetime
 
 class User(db.Model):
     __tablename__ = "users"
@@ -9,3 +10,4 @@ class User(db.Model):
     password = db.Column(db.String(255))
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=True)
     role = db.relationship("Role", backref="users")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

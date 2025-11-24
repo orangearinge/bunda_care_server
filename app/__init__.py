@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from app.routes import register_routes
 from app.models.user import User
 from app.models.role import Role
+from app.utils.auth import hash_password
 
 def create_app():
     app = Flask(__name__)

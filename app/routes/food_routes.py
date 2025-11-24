@@ -38,3 +38,32 @@ def list_meal_log():
 @require_auth
 def create_meal_log():
     return create_meal_log_handler()
+
+# Admin Routes
+from app.utils.auth import require_admin
+from app.controllers.food_controller import (
+    create_menu_handler,
+    update_menu_handler,
+    delete_menu_handler,
+    get_menu_detail_handler
+)
+
+@food_bp.post("/menus")
+@require_admin
+def create_menu():
+    return create_menu_handler()
+
+@food_bp.get("/menus/<int:id>")
+@require_auth
+def get_menu(id):
+    return get_menu_detail_handler(id)
+
+@food_bp.put("/menus/<int:id>")
+@require_admin
+def update_menu(id):
+    return update_menu_handler(id)
+
+@food_bp.delete("/menus/<int:id>")
+@require_admin
+def delete_menu(id):
+    return delete_menu_handler(id)
