@@ -919,6 +919,52 @@ def list_meal_log_handler():
     return ok({"items": payload})
 
 
+def list_menus_handler():
+    """List all menus with their ingredients."""
+    menus = FoodMenu.query.order_by(FoodMenu.meal_type, FoodMenu.name).all()
+    menu_ids = [menu.id for menu in menus]
+    
+    # Get all menu ingredients
+    menu_ingredients = FoodMenuIngredient.query.filter(
+        FoodMenuIngredient.menu_id.in_(menu_ids or [0])
+    ).all()
+    
+    # Get all ingredients
+    ingredient_ids = [mi.ingredient_id for mi in menu_ingredients]
+    ingredients = FoodIngredient.query.filter(
+        FoodIngredient.id.in_(ingredient_ids or [0])
+    ).all()
+    ingredient_map = {ing.id: ing for ing in ingredients}
+    
+    # Group ingredients by menu
+    ingredients_by_menu = {}
+    for menu_ingredient in menu_ingredients:
+        if menu_ingredient.menu_id not in ingredients_by_menu:
+            ingredients_by_menu[menu_ingredient.menu_id] = []
+        
+        ingredient = ingredient_map.get(menu_ingredient.ingredient_id)
+        if ingredient:
+            ingredients_by_menu[menu_ingredient.menu_id].append({
+                "ingredient_id": ingredient.id,
+                "name": ingredient.name,
+                "quantity_g": float(menu_ingredient.quantity_g)
+            })
+    
+    # Build response
+    data = []
+    for menu in menus:
+        data.append({
+            "id": menu.id,
+            "name": menu.name,
+            "meal_type": menu.meal_type,
+            "tags": menu.tags,
+            "is_active": menu.is_active,
+            "ingredients": ingredients_by_menu.get(menu.id, [])
+        })
+    
+    return ok(data)
+
+
 def create_menu_handler():
     """
     Create a new menu with ingredients.

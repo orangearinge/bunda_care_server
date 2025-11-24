@@ -42,11 +42,17 @@ def create_meal_log():
 # Admin Routes
 from app.utils.auth import require_admin
 from app.controllers.food_controller import (
+    list_menus_handler,
     create_menu_handler,
     update_menu_handler,
     delete_menu_handler,
     get_menu_detail_handler
 )
+
+@food_bp.get("/menus")
+@require_auth
+def list_menus():
+    return list_menus_handler()
 
 @food_bp.post("/menus")
 @require_admin
