@@ -1,5 +1,5 @@
 from flask import Blueprint
-from app.controllers.auth_controller import login_handler, register_handler
+from app.controllers.auth_controller import login_handler, register_handler, logout_handler
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -11,3 +11,8 @@ def login():
 @auth_bp.post("/register")
 def register():
     return register_handler()
+
+
+@auth_bp.post("/logout")
+def logout():
+    return logout_handler()

@@ -56,3 +56,11 @@ def register_handler():
     except Exception as e:
         db.session.rollback()
         return error("UNKNOWN_ERROR", str(e), 500)
+
+def logout_handler():
+    """
+    Handle logout request.
+    Since we're using JWT tokens, the actual logout is handled on the client-side
+    by removing the token from storage. This endpoint confirms the logout action.
+    """
+    return ok({"message": "Logged out successfully"})

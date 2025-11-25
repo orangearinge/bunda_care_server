@@ -17,8 +17,12 @@ def create_app():
     migrate = Migrate(app, db)
     
     # CORS Configuration
-    cors.init_app(app, origins=["http://localhost:5173"], 
-                  supports_credentials=True)
+    cors.init_app(app, 
+                  origins=["http://localhost:5173"],
+                  supports_credentials=True,
+                  allow_headers=["Content-Type", "Authorization"],
+                  methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                  expose_headers=["Content-Type", "Authorization"])
 
     register_routes(app)
 
