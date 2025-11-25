@@ -1,12 +1,41 @@
 from flask import request
+from sqlalchemy import or_
 from app.extensions import db
 from app.models.ingredient import FoodIngredient
-from app.utils.http import ok, error, json_body
+from app.utils.http import ok, error, json_body, arg_int
 
 def get_all_ingredients():
-    ingredients = FoodIngredient.query.all()
+    """
+    List ingredients with search and pagination.
+    
+    Query Parameters:
+        - page: Page number (default: 1)
+        - limit: Items per page (default: 10)
+        - search: Search term for name or alternative names
+    """
+    page = arg_int("page", 1, min_value=1)
+    limit = arg_int("limit", 10, min_value=1, max_value=100)
+    search = (request.args.get("search") or "").strip()
+    
+    query = FoodIngredient.query
+    
+    # Apply search filter
+    if search:
+        term = f"%{search}%"
+        query = query.filter(or_(
+            FoodIngredient.name.ilike(term),
+            FoodIngredient.alt_names.ilike(term)
+        ))
+    
+    # Order by name
+    query = query.order_by(FoodIngredient.name)
+    
+    # Paginate
+    pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    
+    # Build response
     data = []
-    for ing in ingredients:
+    for ing in pagination.items:
         data.append({
             "id": ing.id,
             "name": ing.name,
@@ -16,7 +45,14 @@ def get_all_ingredients():
             "carbs_g": float(ing.carbs_g),
             "fat_g": float(ing.fat_g)
         })
-    return ok(data)
+    
+    return ok({
+        "items": data,
+        "total": pagination.total,
+        "page": page,
+        "limit": limit,
+        "pages": pagination.pages
+    })
 
 def create_ingredient():
     data = json_body()
