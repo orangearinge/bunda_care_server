@@ -920,11 +920,48 @@ def list_meal_log_handler():
 
 
 def list_menus_handler():
-    """List all menus with their ingredients."""
-    menus = FoodMenu.query.order_by(FoodMenu.meal_type, FoodMenu.name).all()
+    """
+    List menus with search, filter, and pagination.
+    
+    Query Parameters:
+        - page: Page number (default: 1)
+        - limit: Items per page (default: 10)
+        - search: Search term for name or tags
+        - meal_type: Filter by meal type
+        - is_active: Filter by active status (true/false)
+    """
+    page = arg_int("page", 1, min_value=1)
+    limit = arg_int("limit", 10, min_value=1, max_value=100)
+    search = (request.args.get("search") or "").strip()
+    meal_type = (request.args.get("meal_type") or "").strip().upper()
+    is_active_param = request.args.get("is_active")
+    
+    query = FoodMenu.query
+    
+    # Apply filters
+    if search:
+        term = f"%{search}%"
+        query = query.filter(db.or_(
+            FoodMenu.name.ilike(term),
+            FoodMenu.tags.ilike(term)
+        ))
+    
+    if meal_type and meal_type in MEAL_TYPES:
+        query = query.filter(FoodMenu.meal_type == meal_type)
+        
+    if is_active_param is not None:
+        is_active = is_active_param.lower() == "true"
+        query = query.filter(FoodMenu.is_active == is_active)
+        
+    # Order by
+    query = query.order_by(FoodMenu.meal_type, FoodMenu.name)
+    
+    # Paginate
+    pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    menus = pagination.items
     menu_ids = [menu.id for menu in menus]
     
-    # Get all menu ingredients
+    # Get all menu ingredients for the current page
     menu_ingredients = FoodMenuIngredient.query.filter(
         FoodMenuIngredient.menu_id.in_(menu_ids or [0])
     ).all()
@@ -962,7 +999,13 @@ def list_menus_handler():
             "ingredients": ingredients_by_menu.get(menu.id, [])
         })
     
-    return ok(data)
+    return ok({
+        "items": data,
+        "total": pagination.total,
+        "page": page,
+        "limit": limit,
+        "pages": pagination.pages
+    })
 
 
 def create_menu_handler():

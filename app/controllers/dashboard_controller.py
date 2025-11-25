@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from app.extensions import db
 from app.models.user import User
 from app.models.menu import FoodMenu
-from app.utils.http import ok
+from app.utils.http import ok, arg_int
 
 def get_stats_handler():
     total_users = User.query.count()
@@ -15,29 +15,36 @@ def get_stats_handler():
     })
 
 def get_user_growth_handler():
-    # Get user registrations for the last 30 days
+    # Get user registrations for the last N days (default 30)
+    days = arg_int("days", 30, min_value=7, max_value=365)
     end_date = datetime.utcnow()
-    start_date = end_date - timedelta(days=30)
+    start_date = end_date - timedelta(days=days)
     
     # Query to group by date
-    # Note: This assumes SQLite or PostgreSQL date functions. For MySQL, use func.date()
-    # Since requirements.txt has PyMySQL, I assume MySQL.
-    
+    # Using DATE() function for MySQL compatibility
     results = (
         db.session.query(
-            func.date(User.created_at).label('date'),
+            func.DATE(User.created_at).label('date'),
             func.count(User.id).label('count')
         )
         .filter(User.created_at >= start_date)
-        .group_by(func.date(User.created_at))
+        .group_by(func.DATE(User.created_at))
         .order_by('date')
         .all()
     )
     
-    data = []
-    # Fill in missing days
-    result_map = {str(r.date): r.count for r in results}
+    # Build a map of dates to counts
+    result_map = {}
+    for r in results:
+        # Convert date to string format
+        if hasattr(r.date, 'strftime'):
+            date_key = r.date.strftime('%Y-%m-%d')
+        else:
+            date_key = str(r.date)
+        result_map[date_key] = r.count
     
+    # Fill in all days in the range, including missing days with 0 count
+    data = []
     current = start_date
     while current <= end_date:
         date_str = current.strftime('%Y-%m-%d')
