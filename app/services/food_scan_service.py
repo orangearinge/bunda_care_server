@@ -9,7 +9,7 @@ from typing import Dict, Any
 from app.extensions import db
 from app.utils.ai import recognize
 from app.models.ingredient import FoodIngredient
-from app.services.food_helpers import normalize_name, has_raw_hint
+from app.services.food_helpers import normalize_name
 from app.services.food_constants import DEFAULT_TOP_CANDIDATES
 
 
@@ -52,9 +52,7 @@ def score_ingredient_match(
     if label_lower in alt_lower:
         score += 1
     
-    # Boost if it's a raw ingredient
-    if has_raw_hint(ingredient):
-        score += 1
+
     
     # Apply confidence factor
     score = score * (0.5 + confidence)

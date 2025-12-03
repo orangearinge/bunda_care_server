@@ -4,8 +4,7 @@ Food Service Constants
 Contains all constants and configuration values used in food-related services.
 """
 
-# Keywords for detecting raw ingredients
-RAW_KEYWORDS = ["dada", "paha", "fillet", "kulit", "hati", "ati", "telur", "mentah", "raw"]
+
 
 # Valid meal types
 MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"]

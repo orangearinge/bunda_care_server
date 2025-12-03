@@ -11,7 +11,7 @@ from typing import Dict, Set
 from flask import request
 
 from app.models.ingredient import FoodIngredient
-from app.services.food_constants import RAW_KEYWORDS
+
 
 
 def normalize_name(ingredient: FoodIngredient) -> str:
@@ -41,10 +41,7 @@ def serialize_nutrition(ingredient: FoodIngredient, quantity_g: float) -> Dict[s
     }
 
 
-def has_raw_hint(ingredient: FoodIngredient) -> bool:
-    """Check if ingredient name suggests it's a raw ingredient."""
-    normalized = normalize_name(ingredient)
-    return any(keyword in normalized for keyword in RAW_KEYWORDS)
+
 
 
 def parse_detected_ids_from_query() -> Set[int]:
