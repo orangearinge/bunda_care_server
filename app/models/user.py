@@ -11,3 +11,5 @@ class User(db.Model):
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=True)
     role = db.relationship("Role", backref="users")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    google_id = db.Column(db.String(100), unique=True, nullable=True)
+    avatar = db.Column(db.String(255), nullable=True)

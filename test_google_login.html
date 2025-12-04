@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google OAuth - Bunda Care</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .section-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        #google-signin-button {
+            margin: 20px 0;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .response {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .response.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .response.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .response pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            font-size: 12px;
+            padding: 6px 12px;
+            margin-top: 10px;
+            width: auto;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 Test Google OAuth Backend</h1>
+        <p class="subtitle">Test endpoint /api/auth/google untuk Bunda Care Server</p>
+
+        <div class="info-box">
+            <strong>ℹ️ Cara Pakai:</strong><br>
+            1. Klik tombol "Sign in with Google" di bawah<br>
+            2. ID Token akan otomatis terisi<br>
+            3. Klik "Test Backend" untuk mengirim ke server<br>
+            4. Lihat response dari backend
+        </div>
+
+        <!-- Step 1: Google Sign In -->
+        <div class="section">
+            <div class="section-title">📝 Step 1: Login dengan Google</div>
+            <div id="google-signin-button"></div>
+            <div id="signi n-status"></div>
+        </div>
+
+        <!-- Step 2: ID Token -->
+        <div class="section">
+            <div class="section-title">🔑 Step 2: Google ID Token</div>
+            <div class="input-group">
+                <label for="id-token">ID Token (otomatis dari Google Sign-In):</label>
+                <textarea id="id-token" placeholder="ID Token akan muncul di sini setelah login..."></textarea>
+                <button class="copy-btn" onclick="copyToken()">📋 Copy Token</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Backend URL -->
+        <div class="section">
+            <div class="section-title">🌐 Step 3: Backend Configuration</div>
+            <div class="input-group">
+                <label for="backend-url">Backend URL:</label>
+                <input type="text" id="backend-url" value="http://localhost:5000/api/auth/google"
+                    placeholder="http://localhost:5000/api/auth/google">
+            </div>
+            <button onclick="testBackend()">🚀 Test Backend</button>
+
+            <div id="backend-response" class="response"></div>
+        </div>
+    </div>
+
+    <!-- Google Sign-In Script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <script>
+        // GANTI DENGAN CLIENT ID ANDA
+        const GOOGLE_CLIENT_ID = '362532988128-bsnv1n5p21vo4k5jqkdi592qokjltma5.apps.googleusercontent.com';
+
+        // Initialize Google Sign-In
+        function initializeGoogleSignIn() {
+            google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleCredentialResponse
+            });
+
+            google.accounts.id.renderButton(
+                document.getElementById('google-signin-button'),
+                {
+                    theme: 'outline',
+                    size: 'large',
+                    text: 'signin_with',
+                    width: 280
+                }
+            );
+        }
+
+        // Handle Google Sign-In response
+        function handleCredentialResponse(response) {
+            console.log('Google Sign-In Success!');
+            console.log('ID Token:', response.credential);
+
+            // Decode JWT to show user info
+            const payload = parseJwt(response.credential);
+            console.log('User Info:', payload);
+
+            // Set ID token to textarea
+            document.getElementById('id-token').value = response.credential;
+
+            // Show success status
+            const statusDiv = document.getElementById('signin-status');
+            statusDiv.innerHTML = `
+                <div class="status success">
+                    ✅ Signed in as: ${payload.email}
+                </div>
+            `;
+        }
+
+        // Parse JWT token (decode)
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return {};
+            }
+        }
+
+        // Copy token to clipboard
+        function copyToken() {
+            const tokenElement = document.getElementById('id-token');
+            tokenElement.select();
+            document.execCommand('copy');
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+
+        // Test backend endpoint
+        async function testBackend() {
+            const token = document.getElementById('id-token').value.trim();
+            const backendUrl = document.getElementById('backend-url').value.trim();
+            const responseDiv = document.getElementById('backend-response');
+
+            if (!token) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = '<pre>❌ Error: Please sign in with Google first!</pre>';
+                return;
+            }
+
+            if (!backendUrl) {
+                responseDiv.className = 'response error';
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = '<pre>❌ Error: Backend URL is required!</pre>';
+                return;
+            }
+
+            // Show loading
+            responseDiv.className = 'response';
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = '<pre>⏳ Sending request to backend...</pre>';
+
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+
+                const data = await response.json();
+
+                // Check if response is successful (either data.success=true OR status 200 with token)
+                const isSuccess = response.ok && (data.success || data.token || data.data?.token);
+
+                if (isSuccess) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `
+                        <strong>✅ Backend Response (Success):</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <button class="copy-btn" onclick="copyResponse()">📋 Copy Response</button>
+                    `;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `
+                        <strong>❌ Backend Response (Error):</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `
+                    <strong>❌ Request Failed:</strong>
+                    <pre>${error.message}</pre>
+                    <p style="margin-top: 10px; font-size: 13px;">
+                        Make sure:
+                        1. Backend server is running (flask run)
+                        2. CORS is enabled
+                        3. Backend URL is correct
+                    </p>
+                `;
+            }
+        }
+
+        // Copy response to clipboard
+        function copyResponse() {
+            const responseText = document.querySelector('#backend-response pre').textContent;
+            navigator.clipboard.writeText(responseText);
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+
+        // Initialize when page loads
+        window.onload = function () {
+            // Wait for Google script to load
+            const checkGoogleLoaded = setInterval(() => {
+                if (window.google) {
+                    clearInterval(checkGoogleLoaded);
+                    initializeGoogleSignIn();
+                }
+            }, 100);
+        };
+    </script>
+</body>
+
+</html>

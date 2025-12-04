@@ -1,5 +1,5 @@
 from flask import Blueprint
-from app.controllers.auth_controller import login_handler, register_handler, logout_handler
+from app.controllers.auth_controller import login_handler, register_handler, logout_handler, google_login_handler
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -16,3 +16,7 @@ def register():
 @auth_bp.post("/logout")
 def logout():
     return logout_handler()
+
+@auth_bp.post("/google")
+def google_login():
+    return google_login_handler()

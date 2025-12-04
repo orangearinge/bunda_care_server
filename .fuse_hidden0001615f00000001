@@ -1,0 +1,22 @@
+nohup: ignoring input
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.8.228:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [04/Dec/2025 17:12:32] "GET /test/ HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:12:46] "GET /test/google-oauth HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:12:47] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [04/Dec/2025 17:14:48] "GET /test/google-oauth HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:14:48] "[36mGET /test/google-oauth HTTP/1.1[0m" 304 -
+127.0.0.1 - - [04/Dec/2025 17:14:50] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [04/Dec/2025 17:14:50] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [04/Dec/2025 17:18:23] "GET /test/google-oauth HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:19:21] "POST /api/auth/google HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:22:28] "GET /test/google-oauth HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:26:13] "POST /api/auth/google HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:26:19] "GET /test/google-oauth HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:26:20] "GET /test/google-oauth HTTP/1.1" 200 -
+127.0.0.1 - - [04/Dec/2025 17:26:20] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [04/Dec/2025 17:26:34] "POST /api/auth/google HTTP/1.1" 200 -
