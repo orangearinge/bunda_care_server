@@ -1,8 +1,38 @@
 from flask import request, current_app
 from app.extensions import db
 from app.models.user import User
+from app.models.preference import UserPreference
 from app.utils.auth import create_token, check_password_hash, hash_password
 from app.utils.http import ok, error, json_body
+
+def check_user_preferences_status(user_id):
+    """Check if user has completed preferences setup"""
+    preference = UserPreference.query.filter_by(user_id=user_id).first()
+    if not preference:
+        return False, None
+    
+    # Check if required fields are filled based on role
+    role = (preference.role or "").upper()
+    ROLE_REQUIREMENTS = {
+        "IBU_HAMIL": [
+            "weight_kg", "height_cm", "age_year",
+            "gestational_age_week", "belly_circumference_cm", "lila_cm"
+        ],
+        "IBU_MENYUSUI": [
+            "weight_kg", "height_cm", "age_year", "lactation_ml"
+        ],
+        "ANAK_BALITA": [
+            "weight_kg", "height_cm", "age_year"
+        ],
+    }
+    
+    if role in ROLE_REQUIREMENTS:
+        for key in ROLE_REQUIREMENTS[role]:
+            val = getattr(preference, key, None)
+            if val is None:
+                return False, preference
+    
+    return True, preference
 
 def login_handler():
     data = json_body()
@@ -25,10 +55,21 @@ def login_handler():
 
     role_name = user.role.name if user.role else ""
     token = create_token(user.id, role_name)
-    return ok({
+    
+    # Check if user has completed preferences
+    has_preferences, preference = check_user_preferences_status(user.id)
+    
+    response_data = {
         "token": token,
-        "user": {"id": user.id, "name": user.name, "email": user.email, "role": role_name}
-    })
+        "user": {"id": user.id, "name": user.name, "email": user.email, "role": role_name},
+        "has_preferences": has_preferences,
+        "needs_preferences": not has_preferences
+    }
+    
+    if preference:
+        response_data["current_role"] = preference.role
+    
+    return ok(response_data)
 
 def register_handler():
     data = json_body()
@@ -44,7 +85,10 @@ def register_handler():
         return error("EMAIL_IN_USE", "email already registered", 409)
     try:
         pw_hash = hash_password(password)
-        user = User(name=name, email=email, password=pw_hash)
+        user = User()
+        user.name = name
+        user.email = email
+        user.password = pw_hash
         db.session.add(user)
         db.session.commit()
         role_name = user.role.name if user.role else ""
@@ -103,19 +147,21 @@ def google_login_handler():
             db.session.commit()
         else:
             # Create new user
-            user = User(
-                name=name,
-                email=email,
-                google_id=google_id,
-                avatar=picture
-            )
+            user = User()
+            user.name = name
+            user.email = email
+            user.google_id = google_id
+            user.avatar = picture
             db.session.add(user)
             db.session.commit()
 
         role_name = user.role.name if user.role else ""
         jwt_token = create_token(user.id, role_name)
         
-        return ok({
+        # Check if user has completed preferences
+        has_preferences, preference = check_user_preferences_status(user.id)
+        
+        response_data = {
             "token": jwt_token,
             "user": {
                 "id": user.id, 
@@ -123,8 +169,15 @@ def google_login_handler():
                 "email": user.email, 
                 "role": role_name,
                 "avatar": user.avatar
-            }
-        })
+            },
+            "has_preferences": has_preferences,
+            "needs_preferences": not has_preferences
+        }
+        
+        if preference:
+            response_data["current_role"] = preference.role
+        
+        return ok(response_data)
 
     except ValueError as e:
         return error("INVALID_TOKEN", f"Token verification failed: {str(e)}", 401)
