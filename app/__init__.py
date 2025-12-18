@@ -17,13 +17,16 @@ def create_app():
     migrate = Migrate(app, db)
     
     # CORS Configuration
-    cors.init_app(app, 
+    cors.init_app(app,
                   origins=[
                       "http://localhost:5173",
                       "http://localhost:3000",
                       "http://localhost:5000",
+                      "http://localhost:5500",
+                      "http://127.0.0.1:5500",
                       "http://localhost",
-                      "null"  # For file:// protocol (local HTML files)
+                      "null",  # For file:// protocol (local HTML files)
+                      "https://bundacare.com"  # Production domain
                   ],
                   supports_credentials=True,
                   allow_headers=["Content-Type", "Authorization"],
