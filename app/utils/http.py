@@ -12,7 +12,12 @@ def error(code: str, message: str, status: int = 400, **extra):
     return jsonify(body), status
 
 def json_body() -> Dict[str, Any]:
-    return request.get_json(silent=True) or {}
+    # Try parsing as JSON first (force=True allows missing Content-Type header)
+    data = request.get_json(force=True, silent=True)
+    if data is not None:
+        return data
+    # Fallback to form data (converted to dict) if JSON parsing fails
+    return request.form.to_dict() if request.form else {}
 
 
 def arg_str(name: str, default: Optional[str] = None) -> Optional[str]:

@@ -184,11 +184,10 @@ def generate_meal_recommendations(
     menus: List[FoodMenu],
     ingredient_map: Dict[int, FoodIngredient],
     composition_by_menu: Dict[int, List],
-    detected_ids: Set[int],
-    days: int
+    detected_ids: Set[int]
 ) -> Dict[str, Any]:
     """
-    Generate meal recommendations for specified number of days.
+    Generate meal recommendations for immediate selection.
     
     Args:
         user_id: User ID
@@ -198,10 +197,9 @@ def generate_meal_recommendations(
         ingredient_map: Map of ingredient IDs to ingredients
         composition_by_menu: Map of menu IDs to their ingredients
         detected_ids: Set of detected ingredient IDs
-        days: Number of days to generate
         
     Returns:
-        Dictionary with recommendation plan
+        Dictionary with recommendation options
     """
     # Get dietary restrictions
     restrictions = set(preference.food_prohibitions or [])
@@ -211,7 +209,7 @@ def generate_meal_recommendations(
     boost_per_hit = arg_int("boost_per_hit", DEFAULT_BOOST_PER_HIT, min_value=0, max_value=1000)
     boost_per_100g = arg_int("boost_per_100g", DEFAULT_BOOST_PER_100G, min_value=0, max_value=10000)
     min_hits = arg_int("min_hits", DEFAULT_MIN_HITS, min_value=1, max_value=10)
-    options_per_meal = arg_int("options_per_meal", DEFAULT_OPTIONS_PER_MEAL, min_value=1, max_value=5)
+    options_per_meal = arg_int("options_per_meal", DEFAULT_OPTIONS_PER_MEAL, min_value=1, max_value=10)
     
     # Parse boolean parameters
     require_detected_param = request.args.get("require_detected")
@@ -224,19 +222,6 @@ def generate_meal_recommendations(
         request.args.get("boost_by_quantity", "true").lower() == "true"
     )
     
-    hide_options_param = request.args.get("hide_options")
-    hide_options = (
-        bool(detected_ids) if hide_options_param is None 
-        else (hide_options_param.lower() == "true")
-    )
-    
-    # Parse date parameters
-    date_str = request.args.get("date")
-    try:
-        base_date = date.fromisoformat(date_str) if date_str else date.today()
-    except ValueError:
-        base_date = date.today()
-    
     # Filter meal types
     meal_type_filter = (request.args.get("meal_type") or "").upper().strip()
     meal_types = (
@@ -245,115 +230,83 @@ def generate_meal_recommendations(
     )
     
     # Generate recommendations
-    plan = []
+    recommendations = []
     
-    for day_offset in range(days):
-        day_date = base_date + timedelta(days=day_offset)
-        meals_payload = []
+    for meal_type in meal_types:
+        # Filter menus by type
+        candidates = [
+            menu for menu in menus 
+            if menu.meal_type.upper() == meal_type
+        ]
         
-        for meal_type in meal_types:
-            # Filter menus by type
-            candidates = [
-                menu for menu in menus 
-                if menu.meal_type.upper() == meal_type
-            ]
+        # Score and filter menus
+        scored_pool = []
+        
+        for menu in candidates:
+            # Check dietary restrictions
+            if not is_menu_allowed(menu, allergens, restrictions, 
+                                   ingredient_map, composition_by_menu):
+                continue
             
-            # Score and filter menus
-            scored_pool = []
+            # Calculate nutrition
+            nutrition, ingredients = calculate_menu_nutrition(
+                menu, ingredient_map, composition_by_menu
+            )
             
-            for menu in candidates:
-                # Check dietary restrictions
-                if not is_menu_allowed(menu, allergens, restrictions, 
-                                       ingredient_map, composition_by_menu):
-                    continue
-                
-                # Calculate nutrition
-                nutrition, ingredients = calculate_menu_nutrition(
-                    menu, ingredient_map, composition_by_menu
+            # Calculate base score
+            score = calculate_menu_score(nutrition, targets)
+            
+            # Apply detection boost
+            if detected_ids:
+                # Count hits
+                hits = sum(
+                    1 for ing in ingredients 
+                    if int(ing.get("ingredient_id")) in detected_ids
                 )
                 
-                # Calculate base score
-                score = calculate_menu_score(nutrition, targets)
+                # Skip if doesn't meet minimum hits
+                if require_detected and hits < min_hits:
+                    continue
                 
-                # Apply detection boost
-                if detected_ids:
-                    # Count hits
-                    hits = sum(
-                        1 for ing in ingredients 
-                        if int(ing.get("ingredient_id")) in detected_ids
-                    )
-                    
-                    # Skip if doesn't meet minimum hits
-                    if require_detected and hits < min_hits:
-                        continue
-                    
-                    # Apply boost
-                    score = apply_detection_boost(
-                        score, ingredients, detected_ids,
-                        boost_per_hit, boost_by_quantity, boost_per_100g
-                    )
-                
-                scored_pool.append((score, menu, nutrition, ingredients))
+                # Apply boost
+                score = apply_detection_boost(
+                    score, ingredients, detected_ids,
+                    boost_per_hit, boost_by_quantity, boost_per_100g
+                )
             
-            # Sort by score (lower is better)
-            scored_pool.sort(key=lambda x: (x[0], x[1].name.lower()))
-            
-            # Build options
-            options = []
-            for score, menu, nutrition, ingredient_list in scored_pool[:options_per_meal]:
-                options.append({
-                    "menu_id": menu.id,
-                    "menu_name": menu.name,
-                    "nutrition": nutrition,
-                    "ingredients": ingredient_list,
-                    "score": score,
-                    "food_log_payload": {
-                        "items": [
-                            {
-                                "ingredient_id": ing["ingredient_id"],
-                                "quantity_g": ing["quantity_g"]
-                            }
-                            for ing in ingredient_list
-                        ]
-                    }
-                })
-            
-            # Add best option as recommendation
-            if options:
-                best_option = options[0]
-                meals_payload.append({
-                    "meal_type": meal_type,
-                    **{
-                        key: best_option[key] 
-                        for key in ["menu_id", "menu_name", "nutrition", "ingredients"]
-                    },
-                    "food_log_payload": best_option["food_log_payload"],
-                })
-            
-            # Add all options if not hidden
-            if not hide_options:
-                meals_payload.append({
-                    "meal_type": meal_type,
-                    "options": options
-                })
+            scored_pool.append((score, menu, nutrition, ingredients))
         
-        # Calculate daily summary
-        summary = {"calories": 0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
-        for meal in meals_payload:
-            if "nutrition" in meal:
-                nutrition = meal["nutrition"]
-                for key in ("calories", "protein_g", "carbs_g", "fat_g"):
-                    summary[key] += nutrition[key]
+        # Sort by score (lower is better)
+        scored_pool.sort(key=lambda x: (x[0], x[1].name.lower()))
         
-        plan.append({
-            "date": day_date.isoformat(),
-            "daily_target": targets,
-            "meals": meals_payload,
-            "summary": summary
-        })
+        # Build options
+        options = []
+        for score, menu, nutrition, ingredient_list in scored_pool[:options_per_meal]:
+            options.append({
+                "menu_id": menu.id,
+                "menu_name": menu.name,
+                "nutrition": nutrition,
+                "ingredients": ingredient_list,
+                "score": score,
+                "food_log_payload": {
+                    "items": [
+                        {
+                            "ingredient_id": ing["ingredient_id"],
+                            "quantity_g": ing["quantity_g"]
+                        }
+                        for ing in ingredient_list
+                    ]
+                }
+            })
+        
+        if options:
+            recommendations.append({
+                "meal_type": meal_type,
+                "options": options
+            })
     
     return {
         "user_id": user_id,
-        "start_date": date.today().isoformat(),
-        "days": plan
+        "targets": targets,
+        "recommendations": recommendations
     }

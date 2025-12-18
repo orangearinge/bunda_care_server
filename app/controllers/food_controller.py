@@ -65,8 +65,6 @@ def recommendation_handler():
     Generate meal recommendations based on user preferences and optional detected ingredients.
     
     Query Parameters:
-        - days: Number of days to generate (1-31)
-        - date: Start date (ISO format)
         - meal_type: Filter by specific meal type (BREAKFAST/LUNCH/DINNER)
         - detected_ids: Comma-separated ingredient IDs
         - boost_per_hit: Boost amount per detected ingredient hit
@@ -75,10 +73,8 @@ def recommendation_handler():
         - require_detected: Require menus to contain detected ingredients
         - min_hits: Minimum number of detected ingredient hits required
         - options_per_meal: Number of menu options to return per meal
-        - hide_options: Hide alternative menu options
     """
     user_id = request.user_id
-    days = arg_int("days", 1, min_value=1, max_value=31)
     
     # Get user preferences
     preference = UserPreference.query.get(user_id)
@@ -115,8 +111,7 @@ def recommendation_handler():
             menus=menus,
             ingredient_map=ingredient_map,
             composition_by_menu=composition_by_menu,
-            detected_ids=detected_ids,
-            days=days
+            detected_ids=detected_ids
         )
         return ok(result)
     except Exception as e:
