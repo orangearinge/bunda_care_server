@@ -19,13 +19,13 @@ with app.app_context():
         print('ADMIN role already exists')
 
     # Ensure admin user exists
-    admin_email = 'admin@example.com'
+    admin_email = app.config.get('ADMIN_EMAIL')
     admin_user = User.query.filter_by(email=admin_email).first()
     if not admin_user:
         admin_user = User(
             name='Admin User',
             email=admin_email,
-            password=hash_password('adminpass'),
+            password=hash_password(app.config.get('ADMIN_PASSWORD')),
             role=admin_role
         )
         db.session.add(admin_user)

@@ -17,18 +17,8 @@ depends_on = ${repr(depends_on)}
 
 
 def upgrade():
-    op.add_column('food_logs', sa.Column('source_menu_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(
-        'fk_food_logs_source_menu',
-        'food_logs',
-        'food_menus',
-        ['source_menu_id'],
-        ['id'],
-        ondelete='SET NULL'
-    )
-
+    ${upgrades if upgrades else "pass"}
 
 
 def downgrade():
-    op.drop_constraint('fk_food_logs_source_menu', 'food_logs', type_='foreignkey')
-    op.drop_column('food_logs', 'source_menu_id')
+    ${downgrades if downgrades else "pass"}
