@@ -16,5 +16,4 @@ class UserPreference(db.Model):
     lactation_ml = db.Column(db.Integer)
     food_prohibitions = db.Column(JSON)
     allergens = db.Column(JSON)
-    calorie_target = db.Column(db.Integer)
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now(), nullable=False)

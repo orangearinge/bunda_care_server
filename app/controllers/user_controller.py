@@ -108,6 +108,7 @@ from app.models.user import User
 from app.models.role import Role
 from app.utils.auth import create_token
 from app.utils.http import ok, error, json_body
+from app.services.nutrition_service import calculate_nutritional_targets
 
 
 def upsert_preference_handler():
@@ -127,8 +128,7 @@ def upsert_preference_handler():
     # --- STEP 2: UPDATE SIMPLE FIELDS TERLEBIH DAHULU ---
     normal_fields = [
         "height_cm", "weight_kg", "age_year", "gestational_age_week",
-        "belly_circumference_cm", "lila_cm", "lactation_ml",
-        "calorie_target"
+        "belly_circumference_cm", "lila_cm", "lactation_ml"
     ]
 
     for field in normal_fields:
@@ -206,6 +206,9 @@ def upsert_preference_handler():
     # --- STEP 6: COMMIT ---
     db.session.commit()
 
+    # Calculate nutritional targets to return in response
+    targets = calculate_nutritional_targets(pref)
+
     # --- STEP 7: RESPONSE ---
     response = {
         "user_id": user_id,
@@ -219,7 +222,8 @@ def upsert_preference_handler():
         "lactation_ml": pref.lactation_ml,
         "food_prohibitions": pref.food_prohibitions or [],
         "allergens": pref.allergens or [],
-        "calorie_target": pref.calorie_target,
+        "calorie_target": targets["calories"],
+        "nutritional_targets": targets,
         "updated_at": pref.updated_at.isoformat() if pref.updated_at else None
     }
 

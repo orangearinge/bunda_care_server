@@ -22,7 +22,7 @@ from app.services.food_constants import (
 
 def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
     """
-    Calculate daily nutritional targets based on user role and preferences.
+    Calculate nutritional targets based on user role and preferences.
     
     Args:
         preference: User preference object
@@ -36,7 +36,7 @@ def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
     bmi = (weight / (height_m * height_m)) if height_m > 0 else None
     
     # Base defaults
-    calorie_target = int(preference.calorie_target or DEFAULT_CALORIE_TARGET)
+    calorie_target = int(DEFAULT_CALORIE_TARGET)
     protein_g = max(DEFAULT_MIN_PROTEIN_G, 0.9 * weight)
     carbs_percentage = DEFAULT_CARBS_PERCENTAGE
     fat_percentage = DEFAULT_FAT_PERCENTAGE
@@ -74,7 +74,7 @@ def calculate_pregnant_targets(
     else:
         additional_calories = 452
     
-    calorie_target = int(preference.calorie_target or (DEFAULT_CALORIE_TARGET + additional_calories))
+    calorie_target = int(DEFAULT_CALORIE_TARGET + additional_calories)
     protein_g = max(70.0, 1.1 * weight)
     
     # LILA (mid-upper arm circumference) adjustment for undernutrition
@@ -116,7 +116,7 @@ def calculate_lactating_targets(
     else:
         additional_calories = 500
     
-    calorie_target = int(preference.calorie_target or (2200 + additional_calories))
+    calorie_target = int(2200 + additional_calories)
     protein_g = max(75.0, 1.1 * weight)
     
     return calorie_target, protein_g
