@@ -112,7 +112,7 @@ def calculate_menu_nutrition(
 
 
 def calculate_menu_score(
-    nutrition: Dict[str, float],
+    nutrition: Dict[str, float], 
     targets: Dict[str, float],
     portions_per_day: float = 3.0
 ) -> float:
@@ -267,7 +267,7 @@ def generate_meal_recommendations(
                 # Skip if doesn't meet minimum hits
                 if require_detected and hits < min_hits:
                     continue
-                
+
                 # Apply boost
                 score = apply_detection_boost(
                     score, ingredients, detected_ids,
