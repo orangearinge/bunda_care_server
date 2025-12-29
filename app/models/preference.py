@@ -10,7 +10,15 @@ class UserPreference(db.Model):
     height_cm = db.Column(db.Integer)
     weight_kg = db.Column(db.Numeric(6,2))
     age_year = db.Column(db.Integer)
-    gestational_age_week = db.Column(db.Integer)
+    hpht = db.Column(db.Date)
+    
+    @property
+    def gestational_age_weeks(self):
+        if self.hpht:
+            from datetime import date
+            delta = date.today() - self.hpht
+            return max(0, delta.days // 7)
+        return None
     belly_circumference_cm = db.Column(db.Integer)
     lila_cm = db.Column(db.Integer)
     lactation_ml = db.Column(db.Integer)

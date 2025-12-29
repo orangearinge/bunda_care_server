@@ -16,7 +16,7 @@ def check_user_preferences_status(user_id):
     ROLE_REQUIREMENTS = {
         "IBU_HAMIL": [
             "weight_kg", "height_cm", "age_year",
-            "gestational_age_week", "belly_circumference_cm", "lila_cm"
+            "hpht", "belly_circumference_cm", "lila_cm"
         ],
         "IBU_MENYUSUI": [
             "weight_kg", "height_cm", "age_year", "lactation_ml"

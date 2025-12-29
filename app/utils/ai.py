@@ -66,22 +66,6 @@ def recognize(image_file) -> List[Dict]:
                     except Exception:
                         pass
 
-                # 2) Detection output (YOLO-det): use boxes.cls and boxes.conf
-                boxes = getattr(r, "boxes", None)
-                if boxes is not None:
-                    try:
-                        cls_tensor = getattr(boxes, "cls", None)
-                        conf_tensor = getattr(boxes, "conf", None)
-                        if cls_tensor is not None and conf_tensor is not None:
-                            cls_list = cls_tensor.tolist() if hasattr(cls_tensor, "tolist") else list(cls_tensor)
-                            conf_list = conf_tensor.tolist() if hasattr(conf_tensor, "tolist") else list(conf_tensor)
-                            for ci, cf in zip(cls_list, conf_list):
-                                i = int(ci)
-                                c = float(cf)
-                                label = names.get(i, str(i)) if isinstance(names, dict) else str(i)
-                                labels.append({"label": str(label), "confidence": c})
-                    except Exception:
-                        pass
 
             except Exception:
                 pass
@@ -112,28 +96,5 @@ def recognize(image_file) -> List[Dict]:
             except Exception:
                 pass
 
-    vocab = [
-        ("ayam", 0.86),
-        ("telur", 0.78),
-        ("nasi", 0.80),
-        ("tempe", 0.74),
-        ("tahu", 0.72),
-        ("ikan", 0.77),
-        ("sayur", 0.70),
-        ("brokoli", 0.65),
-        ("wortel", 0.66),
-        ("kentang", 0.69),
-        ("bayam", 0.64),
-        ("sapi", 0.73),
-        ("udang", 0.71),
-    ]
-    hits: List[Dict] = []
-    for label, conf in vocab:
-        if label in basename:
-            hits.append({"label": label, "confidence": conf})
-    if not hits:
-        hits = [
-            {"label": "ayam", "confidence": 0.82},
-            {"label": "kentang", "confidence": 0.61},
-        ]
-    return hits[:5]
+    return []
+

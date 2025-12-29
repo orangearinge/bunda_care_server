@@ -20,7 +20,7 @@
 #         db.session.add(pref)
         
 #     for f in [
-#         "role","height_cm","weight_kg","age_year","gestational_age_week",
+#         "role","height_cm","weight_kg","age_year","hpht",
 #         "belly_circumference_cm","lila_cm","lactation_ml",
 #         "food_prohibitions","allergens","calorie_target"
 #     ]:
@@ -33,7 +33,7 @@
 #         required_by_role = {
 #             "IBU_HAMIL": [
 #                 "weight_kg", "height_cm", "age_year",
-#                 "gestational_age_week", "belly_circumference_cm", "lila_cm"
+#                 "hpht", "belly_circumference_cm", "lila_cm"
 #             ],
 #             "IBU_MENYUSUI": [
 #                 "weight_kg", "height_cm", "age_year", "lactation_ml"
@@ -83,7 +83,7 @@
 #         "height_cm": pref.height_cm,
 #         "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
 #         "age_year": pref.age_year,
-#         "gestational_age_week": pref.gestational_age_week,
+#         "hpht": pref.hpht,
 #         "belly_circumference_cm": pref.belly_circumference_cm,
 #         "lila_cm": pref.lila_cm,
 #         "lactation_ml": pref.lactation_ml,
@@ -101,6 +101,7 @@
 
 
 
+from datetime import datetime
 from flask import request
 from app.extensions import db
 from app.models.preference import UserPreference
@@ -127,13 +128,28 @@ def upsert_preference_handler():
 
     # --- STEP 2: UPDATE SIMPLE FIELDS TERLEBIH DAHULU ---
     normal_fields = [
-        "height_cm", "weight_kg", "age_year", "gestational_age_week",
+        "height_cm", "weight_kg", "age_year",
         "belly_circumference_cm", "lila_cm", "lactation_ml"
     ]
 
     for field in normal_fields:
         if field in body:
             setattr(pref, field, body[field])
+
+    # Special handling for hpht (date)
+    if "hpht" in body:
+        val = body["hpht"]
+        if val:
+            try:
+                # Expecting YYYY-MM-DD or date object
+                if isinstance(val, str):
+                    pref.hpht = datetime.strptime(val, "%Y-%m-%d").date()
+                else:
+                    pref.hpht = val
+            except (ValueError, TypeError):
+                return error("INVALID_FORMAT", "hpht must be in YYYY-MM-DD format", 400)
+        else:
+            pref.hpht = None
 
     # --- STEP 3: HANDLE ARRAY FIELDS (PASTIKAN SELALU LIST) ---
     list_fields = ["food_prohibitions", "allergens"]
@@ -179,7 +195,7 @@ def upsert_preference_handler():
     ROLE_REQUIREMENTS = {
         "IBU_HAMIL": [
             "weight_kg", "height_cm", "age_year",
-            "gestational_age_week", "belly_circumference_cm", "lila_cm"
+            "hpht", "belly_circumference_cm", "lila_cm"
         ],
         "IBU_MENYUSUI": [
             "weight_kg", "height_cm", "age_year", "lactation_ml"
@@ -216,7 +232,8 @@ def upsert_preference_handler():
         "height_cm": pref.height_cm,
         "weight_kg": pref.weight_kg,
         "age_year": pref.age_year,
-        "gestational_age_week": pref.gestational_age_week,
+        "hpht": pref.hpht.isoformat() if pref.hpht else None,
+        "gestational_age_weeks": pref.gestational_age_weeks,
         "belly_circumference_cm": pref.belly_circumference_cm,
         "lila_cm": pref.lila_cm,
         "lactation_ml": pref.lactation_ml,

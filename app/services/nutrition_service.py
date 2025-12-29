@@ -5,6 +5,7 @@ Handles nutritional calculations and targets based on user preferences and roles
 """
 
 from typing import Dict, Any, Tuple
+from datetime import date
 from flask import request
 
 from app.models.preference import UserPreference
@@ -64,7 +65,8 @@ def calculate_pregnant_targets(
     weight: float
 ) -> Tuple[int, float]:
     """Calculate calorie and protein targets for pregnant women."""
-    gestational_age = preference.gestational_age_week or 0
+    # Use property from model
+    gestational_age = preference.gestational_age_weeks or 0
     
     # Calorie adjustment based on trimester
     if gestational_age < FIRST_TRIMESTER_WEEKS:
