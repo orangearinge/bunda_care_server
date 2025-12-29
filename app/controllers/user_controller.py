@@ -230,7 +230,7 @@ def upsert_preference_handler():
         "user_id": user_id,
         "role": pref.role,
         "height_cm": pref.height_cm,
-        "weight_kg": pref.weight_kg,
+        "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
         "age_year": pref.age_year,
         "hpht": pref.hpht.isoformat() if pref.hpht else None,
         "gestational_age_weeks": pref.gestational_age_weeks,

@@ -1,5 +1,5 @@
 from app.extensions import db
-from sqlalchemy.dialects.mysql import JSON
+from sqlalchemy import JSON
 from uuid import uuid4
 
 class UserPreference(db.Model):
