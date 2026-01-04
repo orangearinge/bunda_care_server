@@ -65,6 +65,19 @@ def recognize(image_file) -> List[Dict]:
                             labels.append({"label": str(label), "confidence": c})
                     except Exception:
                         pass
+                
+                # 2) Detection output (YOLO-det)
+                boxes = getattr(r, "boxes", None)
+                if boxes is not None:
+                    for b in boxes:
+                        try:
+                            # Use .item() to get scalar value from tensor
+                            cls_idx = int(b.cls[0].item())
+                            conf = float(b.conf[0].item())
+                            label = names.get(cls_idx, str(cls_idx))
+                            labels.append({"label": str(label), "confidence": conf})
+                        except Exception:
+                            continue
 
 
             except Exception:

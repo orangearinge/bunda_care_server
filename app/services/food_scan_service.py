@@ -104,7 +104,16 @@ def scan_food_image(image) -> Dict[str, Any]:
         return {"candidates": [], "detected_ids": []}
     
     # Query ingredients that might match
-    like_patterns = [f"%{name}%" for name in label_names]
+    # Use individual words for broader search coverage
+    search_terms = set()
+    for name in label_names:
+        search_terms.add(name)
+        # Split Label into individual words (e.g., 'daging ayam' -> 'daging', 'ayam')
+        for word in name.split():
+            if len(word) > 2: # Ignore very short words
+                search_terms.add(word)
+
+    like_patterns = [f"%{term}%" for term in search_terms]
     or_clauses = [
         clause 
         for pattern in like_patterns 
@@ -114,7 +123,7 @@ def scan_food_image(image) -> Dict[str, Any]:
         )
     ]
     
-    ingredients = FoodIngredient.query.filter(db.or_(*or_clauses)).limit(20).all()
+    ingredients = FoodIngredient.query.filter(db.or_(*or_clauses)).limit(50).all()
     
     # Score and rank candidates for each detected label
     candidates = []
@@ -123,11 +132,13 @@ def scan_food_image(image) -> Dict[str, Any]:
         label_text = label["label"].lower()
         confidence = float(label.get("confidence", 0) or 0)
         
-        # Score all ingredients for this label
+        # Score all ingredients for this label and filter out non-matches
         scored = [
             (score_ingredient_match(label_text, ing, confidence), ing)
             for ing in ingredients
         ]
+        # Only keep candidates with actual match score > 0
+        scored = [s for s in scored if s[0] > 0]
         
         # Sort by score (descending)
         scored.sort(key=lambda x: x[0], reverse=True)

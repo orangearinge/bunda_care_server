@@ -185,8 +185,14 @@ def upsert_preference_handler():
 
         # Update user.role_id jika berbeda
         user = User.query.get(user_id)
-        if user and user.role_id != role_obj.id:
-            user.role_id = role_obj.id
+        if user:
+            # Update name if provided
+            incoming_name = body.get("name") or body.get("nama")
+            if incoming_name:
+                user.name = incoming_name
+            
+            if user.role_id != role_obj.id:
+                user.role_id = role_obj.id
 
     # Role final setelah update
     current_role = pref.role.upper()
@@ -248,4 +254,38 @@ def upsert_preference_handler():
     if role_changed:
         response["token"] = create_token(user_id, pref.role)
 
+
+def get_preference_handler():
+    user_id = request.user_id
+    
+    pref = UserPreference.query.filter_by(user_id=user_id).first()
+    if not pref:
+        return error("PREFERENCE_NOT_FOUND", "User preference not found", 404)
+    
+    # Get user info for name
+    user = User.query.get(user_id)
+    
+    # Calculate nutritional targets
+    targets = calculate_nutritional_targets(pref)
+    
+    response = {
+        "user_id": user_id,
+        "name": user.name if user else None,
+        "email": user.email if user else None,
+        "role": pref.role,
+        "height_cm": pref.height_cm,
+        "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
+        "age_year": pref.age_year,
+        "hpht": pref.hpht.isoformat() if pref.hpht else None,
+        "gestational_age_weeks": pref.gestational_age_weeks,
+        "belly_circumference_cm": pref.belly_circumference_cm,
+        "lila_cm": pref.lila_cm,
+        "lactation_ml": pref.lactation_ml,
+        "food_prohibitions": pref.food_prohibitions or [],
+        "allergens": pref.allergens or [],
+        "calorie_target": targets["calories"],
+        "nutritional_targets": targets,
+        "updated_at": pref.updated_at.isoformat() if pref.updated_at else None
+    }
+    
     return ok(response)
