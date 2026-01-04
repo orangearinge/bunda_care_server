@@ -21,7 +21,8 @@ def create_meal_log(
     user_id: int,
     menu_id: int,
     servings: float,
-    logged_at: datetime = None
+    logged_at: datetime = None,
+    is_consumed: bool = False
 ) -> Dict[str, Any]:
     """
     Create a meal log entry from a menu.
@@ -82,6 +83,7 @@ def create_meal_log(
         total_carbs_g=float(total["carbs_g"]),
         total_fat_g=float(total["fat_g"]),
         servings=float(servings),
+        is_consumed=is_consumed,
         logged_at=logged_at,
     )
     db.session.add(meal_log)
@@ -106,6 +108,7 @@ def create_meal_log(
         "menu_id": menu_id,
         "menu_name": menu.name,
         "servings": float(servings),
+        "is_consumed": is_consumed,
         "logged_at": meal_log.logged_at.isoformat() if meal_log.logged_at else None,
         "total": total,
         "items": [
@@ -156,6 +159,7 @@ def list_meal_logs(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
             "menu_id": log.menu_id,
             "menu_name": menu.name if menu else None,
             "servings": float(log.servings),
+            "is_consumed": log.is_consumed,
             "logged_at": log.logged_at.isoformat() if log.logged_at else None,
             "total": {
                 "calories": int(log.total_calories),
@@ -177,3 +181,14 @@ def list_meal_logs(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         })
     
     return payload
+
+
+def confirm_meal_consumed(user_id: int, meal_log_id: int) -> bool:
+    """Mark a meal log as consumed."""
+    log = FoodMealLog.query.filter_by(id=meal_log_id, user_id=user_id).first()
+    if not log:
+        return False
+    
+    log.is_consumed = True
+    db.session.commit()
+    return True

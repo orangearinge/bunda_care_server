@@ -125,6 +125,7 @@ def create_meal_log_handler():
     Body Parameters:
         - menu_id (required): ID of the menu to log
         - servings (optional): Number of servings (default: 1.0)
+        - is_consumed (optional): Whether the meal was actually eaten (default: False)
         - logged_at (optional): Timestamp of the meal (ISO format)
     """
     from app.utils.http import parse_iso_datetime
@@ -147,6 +148,8 @@ def create_meal_log_handler():
     if servings <= 0:
         servings = 1.0
     
+    is_consumed = data.get("is_consumed", False)
+    
     # Parse logged_at
     logged_at = parse_iso_datetime(data.get("logged_at")) or datetime.utcnow()
     
@@ -155,7 +158,8 @@ def create_meal_log_handler():
             user_id=user_id,
             menu_id=menu_id,
             servings=servings,
-            logged_at=logged_at
+            logged_at=logged_at,
+            is_consumed=is_consumed
         )
         return ok(result, 201)
     except ValueError as e:
@@ -168,6 +172,17 @@ def create_meal_log_handler():
     except Exception as e:
         db.session.rollback()
         return error("UNKNOWN_ERROR", str(e), 500)
+
+
+def confirm_meal_log_handler(log_id: int):
+    """Mark a specific meal log as consumed/eaten."""
+    user_id = request.user_id
+    from app.services.meal_log_service import confirm_meal_consumed
+    
+    if confirm_meal_consumed(user_id, log_id):
+        return ok({"message": "Meal marked as consumed", "meal_log_id": log_id})
+    else:
+        return error("NOT_FOUND", "Meal log not found or unauthorized", 404)
 
 
 def list_meal_log_handler():

@@ -11,6 +11,7 @@ class FoodMealLog(db.Model):
     total_carbs_g = db.Column(db.Numeric(10,2), nullable=False, default=0)
     total_fat_g = db.Column(db.Numeric(10,2), nullable=False, default=0)
     servings = db.Column(db.Numeric(8,2), nullable=False, default=1)
+    is_consumed = db.Column(db.Boolean, default=False, nullable=False)
     logged_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
 
 

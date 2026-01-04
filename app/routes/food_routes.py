@@ -39,6 +39,12 @@ def list_meal_log():
 def create_meal_log():
     return create_meal_log_handler()
 
+@food_bp.post("/meal-log/<int:id>/confirm")
+@require_auth
+def confirm_meal_log(id):
+    from app.controllers.food_controller import confirm_meal_log_handler
+    return confirm_meal_log_handler(id)
+
 # Admin Routes
 from app.utils.auth import require_admin
 from app.controllers.food_controller import (

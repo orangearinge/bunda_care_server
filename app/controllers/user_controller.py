@@ -306,11 +306,11 @@ def get_dashboard_summary_handler():
     
     targets = calculate_nutritional_targets(pref)
     
-    # 2. Get Today's Logs
-    today_start = datetime.combine(datetime.utcnow().date(), time.min)
+    # 2. Get Consumed Logs (Not strictly per day, as requested: 'jangan untuk perhari dulu')
+    # Filter only meals that have been marked as consumed/eaten
     logs = FoodMealLog.query.filter(
         FoodMealLog.user_id == user_id,
-        FoodMealLog.logged_at >= today_start
+        FoodMealLog.is_consumed == True
     ).all()
     
     today_nutrition = {
