@@ -285,6 +285,7 @@ def generate_meal_recommendations(
             options.append({
                 "menu_id": menu.id,
                 "menu_name": menu.name,
+                "image_url": menu.image_url,
                 "nutrition": nutrition,
                 "ingredients": ingredient_list,
                 "score": score,

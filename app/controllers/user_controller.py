@@ -377,7 +377,7 @@ def get_dashboard_summary_handler():
                 "id": option["menu_id"],
                 "name": option["menu_name"],
                 "calories": option["nutrition"]["calories"],
-                "image_url": f"https://picsum.photos/seed/{option['menu_id']}/200",
+                "image_url": option.get("image_url") or f"https://picsum.photos/seed/{option['menu_id']}/200",
                 "description": f"Target: {target_rec['meal_type'].capitalize()}"
             })
     

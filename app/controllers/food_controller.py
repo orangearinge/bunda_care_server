@@ -249,6 +249,9 @@ def create_menu_handler():
     """
     data = json_body()
     
+    # Debug logging
+    print(f"[CREATE MENU] Received data: {data}")
+    
     # Validate required fields
     name = (data.get("name") or "").strip()
     meal_type = (data.get("meal_type") or "").strip()
@@ -261,9 +264,11 @@ def create_menu_handler():
             name=name,
             meal_type=meal_type,
             tags=data.get("tags", ""),
+            image_url=data.get("image_url"),
             is_active=data.get("is_active", True),
             ingredients=data.get("ingredients", [])
         )
+        print(f"[CREATE MENU] Successfully created menu with ID: {menu_id}")
         return ok({"id": menu_id, "message": "Menu created successfully"}, 201)
     except Exception as e:
         db.session.rollback()
@@ -283,12 +288,17 @@ def update_menu_handler(menu_id: int):
     """
     data = json_body()
     
+    # Debug logging
+    print(f"[UPDATE MENU] Menu ID: {menu_id}")
+    print(f"[UPDATE MENU] Received data: {data}")
+    
     try:
         success = update_menu(
             menu_id=menu_id,
             name=data.get("name"),
             meal_type=data.get("meal_type"),
             tags=data.get("tags"),
+            image_url=data.get("image_url"),
             is_active=data.get("is_active"),
             ingredients=data.get("ingredients")
         )
@@ -296,6 +306,7 @@ def update_menu_handler(menu_id: int):
         if not success:
             return error("NOT_FOUND", "Menu not found", 404)
         
+        print(f"[UPDATE MENU] Successfully updated menu ID: {menu_id}")
         return ok({"id": menu_id, "message": "Menu updated successfully"})
     except Exception as e:
         db.session.rollback()

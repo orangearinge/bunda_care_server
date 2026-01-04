@@ -7,4 +7,5 @@ class FoodMenu(db.Model):
     name = db.Column(db.String(150), nullable=False)
     meal_type = db.Column(db.String(20), nullable=False)
     tags = db.Column(db.Text)
+    image_url = db.Column(db.String(500), nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)

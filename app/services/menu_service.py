@@ -93,6 +93,7 @@ def list_menus(
             "name": menu.name,
             "meal_type": menu.meal_type,
             "tags": menu.tags,
+            "image_url": menu.image_url,
             "is_active": menu.is_active,
             "ingredients": ingredients_by_menu.get(menu.id, [])
         })
@@ -138,6 +139,7 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
         "name": menu.name,
         "meal_type": menu.meal_type,
         "tags": menu.tags,
+        "image_url": menu.image_url,
         "is_active": menu.is_active,
         "ingredients": ingredients
     }
@@ -147,6 +149,7 @@ def create_menu(
     name: str,
     meal_type: str,
     tags: str = "",
+    image_url: Optional[str] = None,
     is_active: bool = True,
     ingredients: List[Dict] = None
 ) -> int:
@@ -169,15 +172,22 @@ def create_menu(
     if ingredients is None:
         ingredients = []
     
+    print(f"[CREATE_MENU_SERVICE] Creating menu: {name}")
+    print(f"[CREATE_MENU_SERVICE] image_url: {image_url}")
+    print(f"[CREATE_MENU_SERVICE] ingredients: {ingredients}")
+    
     # Create menu
     menu = FoodMenu(
         name=name,
         meal_type=meal_type.upper(),
         tags=tags,
+        image_url=image_url,
         is_active=is_active
     )
     db.session.add(menu)
     db.session.flush()
+    
+    print(f"[CREATE_MENU_SERVICE] Menu created with ID: {menu.id}, image_url: {menu.image_url}")
     
     # Add ingredients
     for item in ingredients:
@@ -192,6 +202,7 @@ def create_menu(
             ))
     
     db.session.commit()
+    print(f"[CREATE_MENU_SERVICE] Menu committed to database")
     return menu.id
 
 
@@ -200,6 +211,7 @@ def update_menu(
     name: Optional[str] = None,
     meal_type: Optional[str] = None,
     tags: Optional[str] = None,
+    image_url: Optional[str] = None,
     is_active: Optional[bool] = None,
     ingredients: Optional[List[Dict]] = None
 ) -> bool:
@@ -231,6 +243,8 @@ def update_menu(
         menu.meal_type = meal_type.upper()
     if tags is not None:
         menu.tags = tags
+    if image_url is not None:
+        menu.image_url = image_url
     if is_active is not None:
         menu.is_active = is_active
     
