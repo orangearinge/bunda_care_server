@@ -101,15 +101,20 @@
 
 
 
-from datetime import datetime
+from datetime import datetime, time
 from flask import request
 from app.extensions import db
 from app.models.preference import UserPreference
 from app.models.user import User
 from app.models.role import Role
+from app.models.meal_log import FoodMealLog
+from app.models.menu import FoodMenu
+from app.models.ingredient import FoodIngredient
+from app.models.menu_ingredient import FoodMenuIngredient
 from app.utils.auth import create_token
 from app.utils.http import ok, error, json_body
 from app.services.nutrition_service import calculate_nutritional_targets
+from app.services.recommendation_service import generate_meal_recommendations
 
 
 def upsert_preference_handler():
@@ -289,3 +294,111 @@ def get_preference_handler():
     }
     
     return ok(response)
+
+
+def get_dashboard_summary_handler():
+    user_id = request.user_id
+    
+    # 1. Get Preference & Targets
+    pref = UserPreference.query.filter_by(user_id=user_id).first()
+    if not pref:
+        return error("PREFERENCE_REQUIRED", "Please complete preferences", 409)
+    
+    targets = calculate_nutritional_targets(pref)
+    
+    # 2. Get Today's Logs
+    today_start = datetime.combine(datetime.utcnow().date(), time.min)
+    logs = FoodMealLog.query.filter(
+        FoodMealLog.user_id == user_id,
+        FoodMealLog.logged_at >= today_start
+    ).all()
+    
+    today_nutrition = {
+        "calories": sum(log.total_calories for log in logs),
+        "protein_g": float(sum(log.total_protein_g for log in logs)),
+        "carbs_g": float(sum(log.total_carbs_g for log in logs)),
+        "fat_g": float(sum(log.total_fat_g for log in logs)),
+    }
+    
+    # 3. Calculate Remaining Targets
+    remaining = {
+        "calories": max(0, targets["calories"] - today_nutrition["calories"]),
+        "protein_g": max(0.0, targets["protein_g"] - today_nutrition["protein_g"]),
+        "carbs_g": max(0.0, targets["carbs_g"] - today_nutrition["carbs_g"]),
+        "fat_g": max(0.0, targets["fat_g"] - today_nutrition["fat_g"]),
+    }
+    
+    # 4. Get Recommendations (Prioritize current meal type based on time)
+    now_hour = (datetime.utcnow().hour + 7) % 24 # WIB
+    current_meal_type = "BREAKFAST"
+    if 10 <= now_hour < 15:
+        current_meal_type = "LUNCH"
+    elif 15 <= now_hour < 21:
+        current_meal_type = "DINNER"
+    elif 21 <= now_hour or now_hour < 4:
+        current_meal_type = "DINNER" # Still dinner for late night
+        
+    menus = FoodMenu.query.filter_by(is_active=True).all()
+    menu_ids = [m.id for m in menus]
+    
+    ingredient_map = {ing.id: ing for ing in FoodIngredient.query.all()}
+    compositions = FoodMenuIngredient.query.filter(
+        FoodMenuIngredient.menu_id.in_(menu_ids or [0])
+    ).all()
+    
+    composition_by_menu = {}
+    for comp in compositions:
+        composition_by_menu.setdefault(comp.menu_id, []).append(comp)
+        
+    recommendation_data = generate_meal_recommendations(
+        user_id=user_id,
+        preference=pref,
+        targets=targets,
+        menus=menus,
+        ingredient_map=ingredient_map,
+        composition_by_menu=composition_by_menu,
+        detected_ids=set()
+    )
+    
+    # Extract recommendations with priority for current meal type
+    all_recs = recommendation_data.get("recommendations", [])
+    
+    # Try to find the exact match for current meal type
+    target_rec = next((r for r in all_recs if r["meal_type"] == current_meal_type), None)
+    
+    # If no match, take the first one as fallback
+    if not target_rec and all_recs:
+        target_rec = all_recs[0]
+        
+    dashboard_recommendations = []
+    if target_rec:
+        for option in target_rec.get("options", []):
+            dashboard_recommendations.append({
+                "id": option["menu_id"],
+                "name": option["menu_name"],
+                "calories": option["nutrition"]["calories"],
+                "image_url": f"https://picsum.photos/seed/{option['menu_id']}/200",
+                "description": f"Target: {target_rec['meal_type'].capitalize()}"
+            })
+    
+    dashboard_recommendations = dashboard_recommendations[:5]
+
+    user_obj = User.query.get(user_id)
+    
+    return ok({
+        "user": {
+            "name": user_obj.name if user_obj else "Bunda",
+            "role": pref.role,
+            "preferences": {
+                "weight_kg": float(pref.weight_kg) if pref.weight_kg else None,
+                "height_cm": pref.height_cm,
+                "age_year": pref.age_year,
+                "allergens": pref.allergens or [],
+                "food_prohibitions": pref.food_prohibitions or []
+            }
+        },
+        "targets": targets,
+        "today_nutrition": today_nutrition,
+        "remaining": remaining,
+        "recommendations": dashboard_recommendations
+    })
