@@ -264,6 +264,26 @@ def upsert_preference_handler():
     return ok(response)
 
 
+def get_user_profile_handler():
+    user_id = request.user_id
+
+    # Get user
+    user = User.query.get(user_id)
+    if not user:
+        return error("USER_NOT_FOUND", "User not found", 404)
+
+    # Return user data
+    response = {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "avatar": user.avatar,
+        "role": user.role.name if user.role else None,
+    }
+
+    return ok(response)
+
+
 def update_user_profile_handler():
     user_id = request.user_id
     body = json_body()

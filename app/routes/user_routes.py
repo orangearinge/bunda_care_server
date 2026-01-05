@@ -4,6 +4,7 @@ from app.controllers.user_controller import (
     upsert_preference_handler,
     get_preference_handler,
     get_dashboard_summary_handler,
+    get_user_profile_handler,
     update_user_profile_handler,
     update_avatar_handler
 )
@@ -17,9 +18,11 @@ def preference():
         return get_preference_handler()
     return upsert_preference_handler()
 
-@user_bp.route("/profile", methods=["PUT"])
+@user_bp.route("/profile", methods=["GET", "PUT"])
 @require_auth
-def update_profile():
+def profile():
+    if request.method == "GET":
+        return get_user_profile_handler()
     return update_user_profile_handler()
 
 @user_bp.route("/dashboard", methods=["GET"])
