@@ -1,9 +1,11 @@
 from flask import Blueprint, request
 from app.utils.auth import require_auth
 from app.controllers.user_controller import (
-    upsert_preference_handler, 
+    upsert_preference_handler,
     get_preference_handler,
-    get_dashboard_summary_handler
+    get_dashboard_summary_handler,
+    update_user_profile_handler,
+    update_avatar_handler
 )
 
 user_bp = Blueprint("user", __name__, url_prefix="/api/user")
@@ -15,7 +17,17 @@ def preference():
         return get_preference_handler()
     return upsert_preference_handler()
 
+@user_bp.route("/profile", methods=["PUT"])
+@require_auth
+def update_profile():
+    return update_user_profile_handler()
+
 @user_bp.route("/dashboard", methods=["GET"])
 @require_auth
 def dashboard():
     return get_dashboard_summary_handler()
+
+@user_bp.route("/avatar", methods=["PUT"])
+@require_auth
+def avatar():
+    return update_avatar_handler()

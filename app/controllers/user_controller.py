@@ -169,7 +169,15 @@ def upsert_preference_handler():
             else:
                 return error("INVALID_FORMAT", f"'{field}' must be a list", 400)
 
-    # --- STEP 4: ROLE UPDATE (HANYA JIKA ADA DI BODY) ---
+    # --- STEP 4: GET USER AND UPDATE NAME ---
+    user = User.query.get(user_id)
+
+    # Update name if provided (independent of role update)
+    incoming_name = body.get("name") or body.get("nama")
+    if user and incoming_name:
+        user.name = incoming_name
+
+    # --- STEP 4.5: ROLE UPDATE (HANYA JIKA ADA DI BODY) ---
     incoming_role = body.get("role")
     role_changed = False
 
@@ -189,15 +197,8 @@ def upsert_preference_handler():
             role_changed = True
 
         # Update user.role_id jika berbeda
-        user = User.query.get(user_id)
-        if user:
-            # Update name if provided
-            incoming_name = body.get("name") or body.get("nama")
-            if incoming_name:
-                user.name = incoming_name
-            
-            if user.role_id != role_obj.id:
-                user.role_id = role_obj.id
+        if user and user.role_id != role_obj.id:
+            user.role_id = role_obj.id
 
     # Role final setelah update
     current_role = pref.role.upper()
@@ -239,6 +240,7 @@ def upsert_preference_handler():
     # --- STEP 7: RESPONSE ---
     response = {
         "user_id": user_id,
+        "name": user.name if user else None,
         "role": pref.role,
         "height_cm": pref.height_cm,
         "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
@@ -260,6 +262,52 @@ def upsert_preference_handler():
         response["token"] = create_token(user_id, pref.role)
 
     return ok(response)
+
+
+def update_user_profile_handler():
+    user_id = request.user_id
+    body = json_body()
+
+    # Get user
+    user = User.query.get(user_id)
+    if not user:
+        return error("USER_NOT_FOUND", "User not found", 404)
+
+    # Update allowed fields
+    allowed_fields = ['name', 'avatar']
+    for field in allowed_fields:
+        if field in body and body[field] is not None:
+            setattr(user, field, body[field])
+
+    db.session.commit()
+
+    # Return updated user data
+    response = {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "avatar": user.avatar,
+        "role": user.role.name if user.role else None,
+    }
+
+    return ok(response)
+
+
+def update_avatar_handler():
+    user_id = request.user_id
+    body = json_body()
+    avatar_url = body.get("avatar") or body.get("avatar_url")
+    if not avatar_url:
+        return error("INVALID_INPUT", "Avatar URL is required", 400)
+
+    user = User.query.get(user_id)
+    if not user:
+        return error("USER_NOT_FOUND", "User not found", 404)
+
+    user.avatar = avatar_url
+    db.session.commit()
+
+    return ok({"user_id": user_id, "avatar": avatar_url})
 
 
 def get_preference_handler():
