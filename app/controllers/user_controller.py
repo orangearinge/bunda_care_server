@@ -259,6 +259,8 @@ def upsert_preference_handler():
     if role_changed:
         response["token"] = create_token(user_id, pref.role)
 
+    return ok(response)
+
 
 def get_preference_handler():
     user_id = request.user_id
