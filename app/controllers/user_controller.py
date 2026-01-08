@@ -1,105 +1,3 @@
-# from flask import request
-# from app.extensions import db
-# from app.models.preference import UserPreference
-# from app.models.user import User
-# from app.models.role import Role
-# from app.utils.auth import create_token
-# from app.utils.http import ok, error, json_body
-
-# def upsert_preference_handler():
-#     user_id = request.user_id
-#     body = json_body()
-
-#     # Ambil atau buat UserPreference baru
-#     pref = UserPreference.query.get(user_id)
-#     if not pref:
-#         pref = UserPreference(
-#             user_id=user_id,
-#             role=body.get("role") or request.user_role or "IBU_HAMIL"
-#         )
-#         db.session.add(pref)
-        
-#     for f in [
-#         "role","height_cm","weight_kg","age_year","hpht",
-#         "belly_circumference_cm","lila_cm","lactation_ml",
-#         "food_prohibitions","allergens","calorie_target"
-#     ]:
-#         if f in body:
-#             setattr(pref, f, body[f])
-
-#     # Validasi berdasarkan role
-#     current_role = str((body.get("role") or pref.role or "")).upper()
-#     if current_role in {"IBU_HAMIL", "IBU_MENYUSUI", "ANAK_BALITA"}:
-#         required_by_role = {
-#             "IBU_HAMIL": [
-#                 "weight_kg", "height_cm", "age_year",
-#                 "hpht", "belly_circumference_cm", "lila_cm"
-#             ],
-#             "IBU_MENYUSUI": [
-#                 "weight_kg", "height_cm", "age_year", "lactation_ml"
-#             ],
-#             "ANAK_BALITA": [
-#                 "weight_kg", "height_cm", "age_year"
-#             ],
-#         }
-
-#         missing = []
-#         for key in required_by_role[current_role]:
-#             val = getattr(pref, key, None)
-#             if val is None or (
-#                 isinstance(val, (int, float)) and float(val) == 0.0
-#             ):
-#                 missing.append(key)
-
-#         if missing:
-#             return error(
-#                 "VALIDATION_ERROR",
-#                 f"Missing required fields for {current_role}: {', '.join(missing)}",
-#                 400
-#             )
-
-#     # Validasi role & update user table
-#     role_name = body.get("role")
-#     if role_name:
-#         role_obj = Role.query.filter(
-#             db.func.upper(Role.name) == str(role_name).upper()
-#         ).first()
-
-#         if not role_obj:
-#             return error("ROLE_NOT_FOUND", f"Role '{role_name}' not found", 400)
-
-#         pref.role = role_obj.name
-
-#         user = User.query.get(user_id)
-#         if user and user.role_id != role_obj.id:
-#             user.role_id = role_obj.id
-
-#     db.session.commit()
-
-#     # Response
-#     resp = {
-#         "user_id": user_id,
-#         "role": pref.role,
-#         "height_cm": pref.height_cm,
-#         "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
-#         "age_year": pref.age_year,
-#         "hpht": pref.hpht,
-#         "belly_circumference_cm": pref.belly_circumference_cm,
-#         "lila_cm": pref.lila_cm,
-#         "lactation_ml": pref.lactation_ml,
-#         "food_prohibitions": pref.food_prohibitions or [],
-#         "allergens": pref.allergens or [],
-#         "calorie_target": pref.calorie_target,
-#         "updated_at": pref.updated_at.isoformat() if pref.updated_at else None
-#     }
-
-#     if role_name:
-#         resp["token"] = create_token(user_id, pref.role)
-
-#     return ok(resp)
-
-
-
 
 from datetime import datetime, time
 from flask import request
@@ -212,7 +110,7 @@ def upsert_preference_handler():
         "IBU_MENYUSUI": [
             "weight_kg", "height_cm", "age_year", "lactation_ml"
         ],
-        "ANAK_BALITA": [
+"ANAK_BATITA": [
             "weight_kg", "height_cm", "age_year"
         ],
     }

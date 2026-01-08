@@ -47,9 +47,9 @@ def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
         calorie_target, protein_g = calculate_pregnant_targets(preference, weight)
     elif role == "IBU_MENYUSUI":
         calorie_target, protein_g = calculate_lactating_targets(preference, weight)
-    elif role == "ANAK_BALITA":
-        calorie_target, protein_g = calculate_toddler_targets(weight)
-        fat_percentage = 0.35
+    elif role == "ANAK_BATITA":
+        calorie_target, protein_g = calculate_infant_targets(preference, weight)
+        fat_percentage = 0.45
     
     return {
         "calories": calorie_target,
@@ -124,10 +124,21 @@ def calculate_lactating_targets(
     return calorie_target, protein_g
 
 
-def calculate_toddler_targets(weight: float) -> Tuple[int, float]:
-    """Calculate calorie and protein targets for toddlers."""
-    default_weight = weight or 12
-    calorie_target = int(max(900, min(1400, 90 * default_weight)))
-    protein_g = max(20.0, 1.1 * default_weight)
+def calculate_infant_targets(
+    preference: UserPreference,
+    weight: float
+) -> Tuple[int, float]:
+    """Calculate calorie and protein targets for infants 0-24 months."""
+    # Calculate age in months
+    age_months = (preference.age_year or 0) * 12
+    
+    if age_months <= 6:
+        # 0-6 months: primarily milk feeding
+        calorie_target = int(max(500, min(750, 100 * weight)))
+        protein_g = max(9.0, 1.5 * weight)
+    else:
+        # 7-24 months: introducing solid foods
+        calorie_target = int(max(750, min(1200, 85 * weight)))
+        protein_g = max(14.0, 1.2 * weight)
     
     return calorie_target, protein_g

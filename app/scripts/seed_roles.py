@@ -6,7 +6,7 @@ REQUIRED_ROLES = [
     {"name": "ADMIN", "description": "Administrator with full access"},
     {"name": "IBU_HAMIL", "description": "Pregnant mother"},
     {"name": "IBU_MENYUSUI", "description": "Post‑natal mother"},
-    {"name": "ANAK_BALITA", "description": "Toddler child"},
+    {"name": "ANAK_BATITA", "description": "Infant 0-24 months"},
 ]
 
 def seed_roles():
