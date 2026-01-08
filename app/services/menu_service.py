@@ -122,26 +122,53 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
         return None
     
     # Get menu ingredients
-    ingredients = []
     menu_ingredients = FoodMenuIngredient.query.filter_by(menu_id=menu_id).all()
+
+    # Calculate nutrition
+    nutrition = {
+        "calories": 0,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 0,
+    }
+    
+    ingredients_list = []
     
     for menu_ingredient in menu_ingredients:
         ingredient = FoodIngredient.query.get(menu_ingredient.ingredient_id)
         if ingredient:
-            ingredients.append({
+            qty = float(menu_ingredient.quantity_g)
+            
+            # Nutrition calc (assuming DB values are per 100g)
+            ratio = qty / 100.0
+            
+            nutrition["calories"] += float(ingredient.calories) * ratio
+            nutrition["protein_g"] += float(ingredient.protein_g) * ratio
+            nutrition["carbs_g"] += float(ingredient.carbs_g) * ratio
+            nutrition["fat_g"] += float(ingredient.fat_g) * ratio
+            
+            ingredients_list.append({
                 "ingredient_id": ingredient.id,
                 "name": ingredient.name,
-                "quantity_g": float(menu_ingredient.quantity_g)
+                "quantity": qty, # Frontend expects 'quantity'
+                "quantity_g": qty,
+                "unit": "gram" # Default unit
             })
     
     return {
         "id": menu.id,
         "name": menu.name,
+        "description": menu.description,
         "meal_type": menu.meal_type,
         "tags": menu.tags,
         "image_url": menu.image_url,
+        "categories": [menu.meal_type], # Flutter might expect this or category
+        "category": menu.meal_type,     # Matching Flutter model
+        "cooking_instructions": menu.cooking_instructions,
+        "cooking_time_minutes": menu.cooking_time_minutes,
         "is_active": menu.is_active,
-        "ingredients": ingredients
+        "nutrition": nutrition,
+        "ingredients": ingredients_list
     }
 
 
@@ -150,6 +177,9 @@ def create_menu(
     meal_type: str,
     tags: str = "",
     image_url: Optional[str] = None,
+    description: Optional[str] = None,
+    cooking_instructions: Optional[str] = None,
+    cooking_time_minutes: Optional[int] = None,
     is_active: bool = True,
     ingredients: List[Dict] = None
 ) -> int:
@@ -160,6 +190,10 @@ def create_menu(
         name: Menu name
         meal_type: BREAKFAST/LUNCH/DINNER
         tags: Comma-separated tags
+        image_url: URL to image
+        description: Menu description
+        cooking_instructions: How to cook
+        cooking_time_minutes: Time in minutes
         is_active: Whether menu is active
         ingredients: List of {ingredient_id, quantity_g}
         
@@ -182,6 +216,9 @@ def create_menu(
         meal_type=meal_type.upper(),
         tags=tags,
         image_url=image_url,
+        description=description,
+        cooking_instructions=cooking_instructions,
+        cooking_time_minutes=cooking_time_minutes,
         is_active=is_active
     )
     db.session.add(menu)

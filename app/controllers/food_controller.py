@@ -265,6 +265,9 @@ def create_menu_handler():
             meal_type=meal_type,
             tags=data.get("tags", ""),
             image_url=data.get("image_url"),
+            description=data.get("description"),
+            cooking_instructions=data.get("cooking_instructions"),
+            cooking_time_minutes=data.get("cooking_time_minutes"),
             is_active=data.get("is_active", True),
             ingredients=data.get("ingredients", [])
         )

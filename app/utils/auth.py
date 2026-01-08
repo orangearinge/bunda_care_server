@@ -34,6 +34,10 @@ def require_auth(f):
             payload = decode_token(token)
             request.user_id = int(payload["sub"])  # type: ignore
             request.user_role = payload.get("role")  # type: ignore
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": {"code": "TOKEN_EXPIRED", "message": "Token has expired"}}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": {"code": "INVALID_TOKEN", "message": "Invalid token"}}), 401
         except Exception:
             return jsonify({"error": {"code": "UNAUTHORIZED", "message": "Invalid token"}}), 401
         return f(*args, **kwargs)
@@ -51,8 +55,12 @@ def require_admin(f):
             payload = decode_token(token)
             request.user_id = int(payload["sub"])  # type: ignore
             request.user_role = payload.get("role")  # type: ignore
-            if str(request.user_role).upper() != "ADMIN":
+            if str(request.user_role).upper() != "ADMIN":  # type: ignore
                 return jsonify({"error": {"code": "FORBIDDEN", "message": "Admin access required"}}), 403
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": {"code": "TOKEN_EXPIRED", "message": "Token has expired"}}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": {"code": "INVALID_TOKEN", "message": "Invalid token"}}), 401
         except Exception:
             return jsonify({"error": {"code": "UNAUTHORIZED", "message": "Invalid token"}}), 401
         return f(*args, **kwargs)

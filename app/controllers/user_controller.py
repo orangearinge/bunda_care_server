@@ -110,7 +110,7 @@ def upsert_preference_handler():
         "IBU_MENYUSUI": [
             "weight_kg", "height_cm", "age_year", "lactation_ml"
         ],
-"ANAK_BATITA": [
+            "ANAK_BATITA": [
             "weight_kg", "height_cm", "age_year"
         ],
     }
@@ -230,17 +230,17 @@ def update_avatar_handler():
 
 def get_preference_handler():
     user_id = request.user_id
-    
+
     pref = UserPreference.query.filter_by(user_id=user_id).first()
     if not pref:
         return error("PREFERENCE_NOT_FOUND", "User preference not found", 404)
-    
+
     # Get user info for name
     user = User.query.get(user_id)
-    
+
     # Calculate nutritional targets
     targets = calculate_nutritional_targets(pref)
-    
+
     response = {
         "user_id": user_id,
         "name": user.name if user else None,
@@ -260,34 +260,34 @@ def get_preference_handler():
         "nutritional_targets": targets,
         "updated_at": pref.updated_at.isoformat() if pref.updated_at else None
     }
-    
+
     return ok(response)
 
 
 def get_dashboard_summary_handler():
     user_id = request.user_id
-    
+
     # 1. Get Preference & Targets
     pref = UserPreference.query.filter_by(user_id=user_id).first()
     if not pref:
         return error("PREFERENCE_REQUIRED", "Please complete preferences", 409)
-    
+
     targets = calculate_nutritional_targets(pref)
-    
+
     # 2. Get Consumed Logs (Not strictly per day, as requested: 'jangan untuk perhari dulu')
     # Filter only meals that have been marked as consumed/eaten
     logs = FoodMealLog.query.filter(
         FoodMealLog.user_id == user_id,
         FoodMealLog.is_consumed == True
     ).all()
-    
+
     today_nutrition = {
         "calories": sum(log.total_calories for log in logs),
         "protein_g": float(sum(log.total_protein_g for log in logs)),
         "carbs_g": float(sum(log.total_carbs_g for log in logs)),
         "fat_g": float(sum(log.total_fat_g for log in logs)),
     }
-    
+
     # 3. Calculate Remaining Targets
     remaining = {
         "calories": max(0, targets["calories"] - today_nutrition["calories"]),
@@ -295,7 +295,7 @@ def get_dashboard_summary_handler():
         "carbs_g": max(0.0, targets["carbs_g"] - today_nutrition["carbs_g"]),
         "fat_g": max(0.0, targets["fat_g"] - today_nutrition["fat_g"]),
     }
-    
+
     # 4. Get Recommendations (Prioritize current meal type based on time)
     now_hour = (datetime.utcnow().hour + 7) % 24 # WIB
     current_meal_type = "BREAKFAST"
@@ -305,19 +305,19 @@ def get_dashboard_summary_handler():
         current_meal_type = "DINNER"
     elif 21 <= now_hour or now_hour < 4:
         current_meal_type = "DINNER" # Still dinner for late night
-        
+
     menus = FoodMenu.query.filter_by(is_active=True).all()
     menu_ids = [m.id for m in menus]
-    
+
     ingredient_map = {ing.id: ing for ing in FoodIngredient.query.all()}
     compositions = FoodMenuIngredient.query.filter(
         FoodMenuIngredient.menu_id.in_(menu_ids or [0])
     ).all()
-    
+
     composition_by_menu = {}
     for comp in compositions:
         composition_by_menu.setdefault(comp.menu_id, []).append(comp)
-        
+
     recommendation_data = generate_meal_recommendations(
         user_id=user_id,
         preference=pref,
@@ -327,17 +327,17 @@ def get_dashboard_summary_handler():
         composition_by_menu=composition_by_menu,
         detected_ids=set()
     )
-    
+
     # Extract recommendations with priority for current meal type
     all_recs = recommendation_data.get("recommendations", [])
-    
+
     # Try to find the exact match for current meal type
     target_rec = next((r for r in all_recs if r["meal_type"] == current_meal_type), None)
-    
+
     # If no match, take the first one as fallback
     if not target_rec and all_recs:
         target_rec = all_recs[0]
-        
+
     dashboard_recommendations = []
     if target_rec:
         for option in target_rec.get("options", []):
@@ -348,11 +348,11 @@ def get_dashboard_summary_handler():
                 "image_url": option.get("image_url") or f"https://picsum.photos/seed/{option['menu_id']}/200",
                 "description": f"Target: {target_rec['meal_type'].capitalize()}"
             })
-    
+
     dashboard_recommendations = dashboard_recommendations[:5]
 
     user_obj = User.query.get(user_id)
-    
+
     return ok({
         "user": {
             "name": user_obj.name if user_obj else "Bunda",
