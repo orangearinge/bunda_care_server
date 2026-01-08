@@ -61,7 +61,13 @@ def login_handler():
     
     response_data = {
         "token": token,
-        "user": {"id": user.id, "name": user.name, "email": user.email, "role": role_name},
+        "user": {
+            "id": user.id, 
+            "name": user.name, 
+            "email": user.email, 
+            "role": role_name,
+            "avatar": user.avatar
+        },
         "has_preferences": has_preferences,
         "needs_preferences": not has_preferences
     }
@@ -95,7 +101,13 @@ def register_handler():
         token = create_token(user.id, role_name)
         return ok({
             "token": token,
-            "user": {"id": user.id, "name": user.name, "email": user.email, "role": role_name}
+            "user": {
+                "id": user.id, 
+                "name": user.name, 
+                "email": user.email, 
+                "role": role_name,
+                "avatar": user.avatar
+            }
         }, 201)
     except Exception as e:
         db.session.rollback()
