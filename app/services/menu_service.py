@@ -249,6 +249,9 @@ def update_menu(
     meal_type: Optional[str] = None,
     tags: Optional[str] = None,
     image_url: Optional[str] = None,
+    description: Optional[str] = None,
+    cooking_instructions: Optional[str] = None,
+    cooking_time_minutes: Optional[int] = None,
     is_active: Optional[bool] = None,
     ingredients: Optional[List[Dict]] = None
 ) -> bool:
@@ -260,6 +263,10 @@ def update_menu(
         name: Menu name
         meal_type: BREAKFAST/LUNCH/DINNER
         tags: Comma-separated tags
+        image_url: URL to image
+        description: Menu description
+        cooking_instructions: How to cook
+        cooking_time_minutes: Time in minutes
         is_active: Whether menu is active
         ingredients: List of {ingredient_id, quantity_g} (replaces all)
         
@@ -282,6 +289,12 @@ def update_menu(
         menu.tags = tags
     if image_url is not None:
         menu.image_url = image_url
+    if description is not None:
+        menu.description = description
+    if cooking_instructions is not None:
+        menu.cooking_instructions = cooking_instructions
+    if cooking_time_minutes is not None:
+        menu.cooking_time_minutes = cooking_time_minutes
     if is_active is not None:
         menu.is_active = is_active
     
