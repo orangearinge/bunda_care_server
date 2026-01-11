@@ -41,6 +41,46 @@ def get_base_akg(age_year: int) -> Dict[str, Any]:
         return AKG_BASE["80+"]
 
 
+def get_calibrated_base(preference: UserPreference, base: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Calibrate base AKG values based on user's actual weight vs reference weight.
+    Using a 'Correct' approach: if BMI > 25, use Adjusted Body Weight for calibration
+    to prevent over-calculating calories for obese users.
+    """
+    weight = float(preference.weight_kg or 0)
+    height = float(preference.height_cm or 0)
+    ref_bb = float(base.get("ref_bb", 55))
+    
+    print(f"DEBUG NUTRITION: User Weight={weight}, Height={height}, Ref BB={ref_bb}")
+    
+    if not weight or not ref_bb:
+        return {k: float(v) for k, v in base.items() if isinstance(v, (int, float))}
+
+    # Calculate target weight for ratio
+    height_m = height / 100.0
+    bmi = (weight / (height_m * height_m)) if height_m > 0 else 22.0
+    
+    calc_weight = weight
+    if bmi > 25.0 and height > 100:
+        # Use Adjusted Body Weight (BBI + 25% excess)
+        bbi = (height - 100) * 0.9
+        calc_weight = bbi + 0.25 * (weight - bbi)
+        print(f"DEBUG NUTRITION: BMI={bmi} (>25), Adjusted Weight={calc_weight}")
+    
+    ratio = calc_weight / ref_bb
+    print(f"DEBUG NUTRITION: Final Ratio={ratio}")
+    
+    # Bound the ratio to avoid extreme values (e.g., 0.7 to 1.5)
+    ratio = max(0.7, min(1.5, ratio))
+    
+    return {
+        "energy": base["energy"] * ratio,
+        "protein": base["protein"] * ratio,
+        "fat": base["fat"] * ratio,
+        "carbs": base["carbs"] * ratio
+    }
+
+
 def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
     """
     Calculate nutritional targets based on user role and preferences.
@@ -57,7 +97,15 @@ def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
     bmi = (weight / (height_m * height_m)) if height_m > 0 else None
     
     # Get base values from AKG table
-    base = get_base_akg(preference.age_year)
+    raw_base = get_base_akg(preference.age_year)
+    
+    # Calibrate base values purely for IBU_HAMIL and IBU_MENYUSUI
+    # For ANAK_BATITA, we use a different formula entirely.
+    if role in ["IBU_HAMIL", "IBU_MENYUSUI"]:
+        base = get_calibrated_base(preference, raw_base)
+    else:
+        base = {k: float(v) for k, v in raw_base.items() if isinstance(v, (int, float))}
+
     calorie_target = base["energy"]
     protein_g = base["protein"]
     fat_g = base["fat"]
@@ -76,6 +124,7 @@ def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
         protein_g = targets["protein"]
         fat_g = targets["fat"]
         carbs_g = targets["carbs"]
+
     elif role == "ANAK_BATITA":
         calorie_target, protein_g = calculate_infant_targets(preference, weight)
         # Infant solid food targets

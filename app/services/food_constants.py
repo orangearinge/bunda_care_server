@@ -13,14 +13,14 @@ MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"]
 CALORIES_PER_GRAM_CARBS = 4.0
 CALORIES_PER_GRAM_FAT = 9.0
 
-# Base AKG for women by age group (Energi, Protein, Lemak, Karbohidrat)
+# Base AKG for women by age group (ref_bb: Berat Badan Referensi (kg), ref_tb: Tinggi Badan Referensi (cm))
 # Values from image table
 AKG_BASE = {
-    "19-29": {"energy": 2250, "protein": 60, "fat": 65, "carbs": 360},
-    "30-49": {"energy": 2150, "protein": 60, "fat": 60, "carbs": 340},
-    "50-64": {"energy": 1800, "protein": 60, "fat": 50, "carbs": 280},
-    "65-80": {"energy": 1550, "protein": 58, "fat": 45, "carbs": 230},
-    "80+": {"energy": 1400, "protein": 58, "fat": 40, "carbs": 200}
+    "19-29": {"energy": 2250, "protein": 60, "fat": 65, "carbs": 360, "ref_bb": 55, "ref_tb": 159},
+    "30-49": {"energy": 2150, "protein": 60, "fat": 60, "carbs": 340, "ref_bb": 56, "ref_tb": 158},
+    "50-64": {"energy": 1800, "protein": 60, "fat": 50, "carbs": 280, "ref_bb": 56, "ref_tb": 158},
+    "65-80": {"energy": 1550, "protein": 58, "fat": 45, "carbs": 230, "ref_bb": 53, "ref_tb": 157},
+    "80+": {"energy": 1400, "protein": 58, "fat": 40, "carbs": 200, "ref_bb": 53, "ref_tb": 157}
 }
 
 # Pregnancy Increments (+an) from image table

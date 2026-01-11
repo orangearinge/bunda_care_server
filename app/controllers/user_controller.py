@@ -18,6 +18,7 @@ from app.services.recommendation_service import generate_meal_recommendations
 def upsert_preference_handler():
     user_id = request.user_id
     body = json_body()
+    print(f"DEBUG UPSERT: Body received: {body}")
 
     # --- STEP 1: GET OR CREATE USER PREFERENCE ---
     pref = UserPreference.query.filter_by(user_id=user_id).first()
@@ -359,6 +360,10 @@ def get_dashboard_summary_handler():
                 "weight_kg": float(pref.weight_kg) if pref.weight_kg else None,
                 "height_cm": pref.height_cm,
                 "age_year": pref.age_year,
+                "lactation_phase": pref.lactation_phase,
+                "lila_cm": pref.lila_cm,
+                "hpht": pref.hpht.isoformat() if pref.hpht else None,
+                "gestational_age_weeks": pref.gestational_age_weeks,
                 "allergens": pref.allergens or [],
                 "food_prohibitions": pref.food_prohibitions or []
             }
