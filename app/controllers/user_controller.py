@@ -32,7 +32,7 @@ def upsert_preference_handler():
     # --- STEP 2: UPDATE SIMPLE FIELDS TERLEBIH DAHULU ---
     normal_fields = [
         "height_cm", "weight_kg", "age_year",
-        "belly_circumference_cm", "lila_cm", "lactation_ml"
+        "lila_cm", "lactation_phase"
     ]
 
     for field in normal_fields:
@@ -105,10 +105,10 @@ def upsert_preference_handler():
     ROLE_REQUIREMENTS = {
         "IBU_HAMIL": [
             "weight_kg", "height_cm", "age_year",
-            "hpht", "belly_circumference_cm", "lila_cm"
+            "hpht", "lila_cm"
         ],
         "IBU_MENYUSUI": [
-            "weight_kg", "height_cm", "age_year", "lactation_ml"
+            "weight_kg", "height_cm", "age_year", "lactation_phase"
         ],
             "ANAK_BATITA": [
             "weight_kg", "height_cm", "age_year"
@@ -145,9 +145,8 @@ def upsert_preference_handler():
         "age_year": pref.age_year,
         "hpht": pref.hpht.isoformat() if pref.hpht else None,
         "gestational_age_weeks": pref.gestational_age_weeks,
-        "belly_circumference_cm": pref.belly_circumference_cm,
         "lila_cm": pref.lila_cm,
-        "lactation_ml": pref.lactation_ml,
+        "lactation_phase": pref.lactation_phase,
         "food_prohibitions": pref.food_prohibitions or [],
         "allergens": pref.allergens or [],
         "calorie_target": targets["calories"],
@@ -251,9 +250,8 @@ def get_preference_handler():
         "age_year": pref.age_year,
         "hpht": pref.hpht.isoformat() if pref.hpht else None,
         "gestational_age_weeks": pref.gestational_age_weeks,
-        "belly_circumference_cm": pref.belly_circumference_cm,
         "lila_cm": pref.lila_cm,
-        "lactation_ml": pref.lactation_ml,
+        "lactation_phase": pref.lactation_phase,
         "food_prohibitions": pref.food_prohibitions or [],
         "allergens": pref.allergens or [],
         "calorie_target": targets["calories"],

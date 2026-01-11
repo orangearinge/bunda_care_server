@@ -19,9 +19,8 @@ class UserPreference(db.Model):
             delta = date.today() - self.hpht
             return max(0, delta.days // 7)
         return None
-    belly_circumference_cm = db.Column(db.Integer)
     lila_cm = db.Column(db.Integer)
-    lactation_ml = db.Column(db.Integer)
+    lactation_phase = db.Column(db.String(20)) # "0-6" or "6-12"
     food_prohibitions = db.Column(JSON)
     allergens = db.Column(JSON)
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now(), nullable=False)
