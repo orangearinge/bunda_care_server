@@ -31,14 +31,24 @@ def upsert_preference_handler():
         db.session.add(pref)
 
     # --- STEP 2: UPDATE SIMPLE FIELDS TERLEBIH DAHULU ---
-    normal_fields = [
-        "height_cm", "weight_kg", "age_year",
-        "lila_cm", "lactation_phase"
-    ]
+    # Numeric casting mapping
+    numeric_fields = {
+        "height_cm": int,
+        "weight_kg": float,
+        "age_year": int,
+        "age_month": int,
+        "lila_cm": float
+    }
 
-    for field in normal_fields:
+    for field in ["height_cm", "weight_kg", "age_year", "age_month", "lila_cm", "lactation_phase"]:
         if field in body:
-            setattr(pref, field, body[field])
+            val = body[field]
+            if val is not None and field in numeric_fields:
+                try:
+                    val = numeric_fields[field](val)
+                except (ValueError, TypeError):
+                    pass # Keep original value or handle error
+            setattr(pref, field, val)
 
     # Special handling for hpht (date)
     if "hpht" in body:
@@ -111,8 +121,8 @@ def upsert_preference_handler():
         "IBU_MENYUSUI": [
             "weight_kg", "height_cm", "age_year", "lactation_phase"
         ],
-            "ANAK_BATITA": [
-            "weight_kg", "height_cm", "age_year"
+        "ANAK_BATITA": [
+            "weight_kg", "height_cm", "age_year", "age_month"
         ],
     }
 
@@ -144,6 +154,7 @@ def upsert_preference_handler():
         "height_cm": pref.height_cm,
         "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
         "age_year": pref.age_year,
+        "age_month": pref.age_month,
         "hpht": pref.hpht.isoformat() if pref.hpht else None,
         "gestational_age_weeks": pref.gestational_age_weeks,
         "lila_cm": pref.lila_cm,
@@ -249,6 +260,7 @@ def get_preference_handler():
         "height_cm": pref.height_cm,
         "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
         "age_year": pref.age_year,
+        "age_month": pref.age_month,
         "hpht": pref.hpht.isoformat() if pref.hpht else None,
         "gestational_age_weeks": pref.gestational_age_weeks,
         "lila_cm": pref.lila_cm,
@@ -360,6 +372,7 @@ def get_dashboard_summary_handler():
                 "weight_kg": float(pref.weight_kg) if pref.weight_kg else None,
                 "height_cm": pref.height_cm,
                 "age_year": pref.age_year,
+                "age_month": pref.age_month,
                 "lactation_phase": pref.lactation_phase,
                 "lila_cm": pref.lila_cm,
                 "hpht": pref.hpht.isoformat() if pref.hpht else None,

@@ -13,6 +13,14 @@ MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"]
 CALORIES_PER_GRAM_CARBS = 4.0
 CALORIES_PER_GRAM_FAT = 9.0
 
+# Base AKG for infants/children (ref_bb: Berat Badan Referensi (kg), ref_tb: Tinggi Badan Referensi (cm))
+# Values from image table
+AKG_CHILD_BASE = {
+    "0-5m": {"energy": 550, "protein": 9, "fat": 31, "carbs": 59, "ref_bb": 6, "ref_tb": 60},
+    "6-11m": {"energy": 800, "protein": 15, "fat": 35, "carbs": 105, "ref_bb": 9, "ref_tb": 72},
+    "1-3y": {"energy": 1350, "protein": 20, "fat": 45, "carbs": 215, "ref_bb": 13, "ref_tb": 92}
+}
+
 # Base AKG for women by age group (ref_bb: Berat Badan Referensi (kg), ref_tb: Tinggi Badan Referensi (cm))
 # Values from image table
 AKG_BASE = {

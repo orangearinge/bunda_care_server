@@ -10,6 +10,7 @@ class UserPreference(db.Model):
     height_cm = db.Column(db.Integer)
     weight_kg = db.Column(db.Numeric(6,2))
     age_year = db.Column(db.Integer)
+    age_month = db.Column(db.Integer)
     hpht = db.Column(db.Date)
     
     @property
