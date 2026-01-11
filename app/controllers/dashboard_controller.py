@@ -3,15 +3,30 @@ from datetime import datetime, timedelta
 from app.extensions import db
 from app.models.user import User
 from app.models.menu import FoodMenu
+from app.models.ingredient import FoodIngredient
+from app.models.article import Article
 from app.utils.http import ok, arg_int
 
 def get_stats_handler():
     total_users = User.query.count()
     total_active_menus = FoodMenu.query.filter_by(is_active=True).count()
+    total_ingredients = FoodIngredient.query.count()
+    total_articles = Article.query.filter_by(is_deleted=False).count()
+    
+    day_ago = datetime.utcnow() - timedelta(days=1)
+    active_users_today = User.query.filter(User.created_at >= day_ago).count()
     
     return ok({
         "total_users": total_users,
-        "total_active_menus": total_active_menus
+        "total_users_change": 0,
+        "total_active_menus": total_active_menus,
+        "active_menus_change": 0,
+        "total_ingredients": total_ingredients,
+        "ingredients_change": 0,
+        "total_articles": total_articles,
+        "articles_change": 0,
+        "active_users_today": active_users_today,
+        "active_users_change": 0
     })
 
 def get_user_growth_handler():

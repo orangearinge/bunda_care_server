@@ -8,7 +8,7 @@ Handles meal recommendation logic including:
 """
 
 from datetime import timedelta, date
-from typing import Dict, List, Set, Tuple, Any
+from typing import Dict, List, Set, Tuple, Any, Optional
 from flask import request
 
 from app.models.ingredient import FoodIngredient
@@ -184,7 +184,14 @@ def generate_meal_recommendations(
     menus: List[FoodMenu],
     ingredient_map: Dict[int, FoodIngredient],
     composition_by_menu: Dict[int, List],
-    detected_ids: Set[int]
+    detected_ids: Set[int],
+    boost_per_hit: int = DEFAULT_BOOST_PER_HIT,
+    boost_per_100g: int = DEFAULT_BOOST_PER_100G,
+    min_hits: int = DEFAULT_MIN_HITS,
+    options_per_meal: int = DEFAULT_OPTIONS_PER_MEAL,
+    require_detected: Optional[bool] = None,
+    boost_by_quantity: bool = True,
+    meal_type_filter: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Generate meal recommendations for immediate selection.
@@ -197,6 +204,13 @@ def generate_meal_recommendations(
         ingredient_map: Map of ingredient IDs to ingredients
         composition_by_menu: Map of menu IDs to their ingredients
         detected_ids: Set of detected ingredient IDs
+        boost_per_hit: Score reduction per detected ingredient hit
+        boost_per_100g: Score reduction per 100g of detected ingredient
+        min_hits: Minimum detected ingredients required (if require_detected is True)
+        options_per_meal: Number of recommendations to return per meal type
+        require_detected: If True, only return menus with detected ingredients
+        boost_by_quantity: If True, scale boost by ingredient quantity
+        meal_type_filter: specific meal type to filter (e.g. BREAKFAST)
         
     Returns:
         Dictionary with recommendation options
@@ -205,27 +219,14 @@ def generate_meal_recommendations(
     restrictions = set(preference.food_prohibitions or [])
     allergens = set(preference.allergens or [])
     
-    # Get recommendation parameters
-    boost_per_hit = arg_int("boost_per_hit", DEFAULT_BOOST_PER_HIT, min_value=0, max_value=1000)
-    boost_per_100g = arg_int("boost_per_100g", DEFAULT_BOOST_PER_100G, min_value=0, max_value=10000)
-    min_hits = arg_int("min_hits", DEFAULT_MIN_HITS, min_value=1, max_value=10)
-    options_per_meal = arg_int("options_per_meal", DEFAULT_OPTIONS_PER_MEAL, min_value=1, max_value=10)
-    
-    # Parse boolean parameters
-    require_detected_param = request.args.get("require_detected")
-    require_detected = (
-        bool(detected_ids) if require_detected_param is None 
-        else (require_detected_param.lower() == "true")
-    )
-    
-    boost_by_quantity = (
-        request.args.get("boost_by_quantity", "true").lower() == "true"
-    )
-    
+    # Resolve require_detected
+    if require_detected is None:
+        require_detected = bool(detected_ids)
+        
     # Filter meal types
-    meal_type_filter = (request.args.get("meal_type") or "").upper().strip()
+    meal_type_clean = (meal_type_filter or "").upper().strip()
     meal_types = (
-        [meal_type_filter] if meal_type_filter in MEAL_TYPES 
+        [meal_type_clean] if meal_type_clean in MEAL_TYPES 
         else MEAL_TYPES
     )
     
@@ -256,7 +257,7 @@ def generate_meal_recommendations(
                     user_role_cat = "ANAK_6_8"
                 elif 9 <= total_months <= 11:
                     user_role_cat = "ANAK_9_11"
-                elif 12 <= total_months <= 23:
+                elif 12 <= total_months: # Covers 12-23m and older toddlers (2-3y)
                     user_role_cat = "ANAK_12_23"
                 else:
                     user_role_cat = "ANAK" # Fallback

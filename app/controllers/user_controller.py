@@ -329,6 +329,30 @@ def get_dashboard_summary_handler():
     for comp in compositions:
         composition_by_menu.setdefault(comp.menu_id, []).append(comp)
 
+    # Parse parameters for recommendations
+    from app.services.food_constants import (
+        DEFAULT_BOOST_PER_HIT, DEFAULT_BOOST_PER_100G, 
+        DEFAULT_MIN_HITS, DEFAULT_OPTIONS_PER_MEAL
+    )
+    from app.utils.http import arg_int
+    
+    boost_per_hit = arg_int("boost_per_hit", DEFAULT_BOOST_PER_HIT, min_value=0, max_value=1000)
+    boost_per_100g = arg_int("boost_per_100g", DEFAULT_BOOST_PER_100G, min_value=0, max_value=10000)
+    min_hits = arg_int("min_hits", DEFAULT_MIN_HITS, min_value=1, max_value=10)
+    options_per_meal = arg_int("options_per_meal", DEFAULT_OPTIONS_PER_MEAL, min_value=1, max_value=10)
+    
+    require_detected_param = request.args.get("require_detected")
+    require_detected = (
+        None if require_detected_param is None 
+        else (require_detected_param.lower() == "true")
+    )
+    
+    boost_by_quantity = (
+        request.args.get("boost_by_quantity", "true").lower() == "true"
+    )
+    
+    meal_type_filter = request.args.get("meal_type")
+
     recommendation_data = generate_meal_recommendations(
         user_id=user_id,
         preference=pref,
@@ -336,7 +360,14 @@ def get_dashboard_summary_handler():
         menus=menus,
         ingredient_map=ingredient_map,
         composition_by_menu=composition_by_menu,
-        detected_ids=set()
+        detected_ids=set(),
+        boost_per_hit=boost_per_hit,
+        boost_per_100g=boost_per_100g,
+        min_hits=min_hits,
+        options_per_meal=options_per_meal,
+        require_detected=require_detected,
+        boost_by_quantity=boost_by_quantity,
+        meal_type_filter=meal_type_filter
     )
 
     # Extract recommendations with priority for current meal type

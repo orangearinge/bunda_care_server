@@ -48,8 +48,11 @@ def list_menus(
     
     if meal_type and meal_type.upper() in MEAL_TYPES:
         query = query.filter(FoodMenu.meal_type == meal_type.upper())
-        
-    if is_active is not None:
+    
+    # Default to active menus only
+    if is_active is None:
+        query = query.filter(FoodMenu.is_active == True)
+    elif is_active is not None:
         query = query.filter(FoodMenu.is_active == is_active)
 
     if target_role:
@@ -117,6 +120,10 @@ def list_menus(
             "meal_type": menu.meal_type,
             "tags": menu.tags,
             "image_url": menu.image_url,
+            "description": menu.description,
+            "cooking_instructions": menu.cooking_instructions,
+            "cooking_time_minutes": menu.cooking_time_minutes,
+            "target_role": menu.target_role,
             "is_active": menu.is_active,
             "ingredients": ingredients_by_menu.get(menu.id, [])
         })
@@ -189,6 +196,7 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
         "category": menu.meal_type,     # Matching Flutter model
         "cooking_instructions": menu.cooking_instructions,
         "cooking_time_minutes": menu.cooking_time_minutes,
+        "target_role": menu.target_role,
         "is_active": menu.is_active,
         "nutrition": nutrition,
         "ingredients": ingredients_list
@@ -351,7 +359,7 @@ def update_menu(
 
 def delete_menu(menu_id: int) -> bool:
     """
-    Delete a menu and its associated ingredients.
+    Soft delete a menu by setting is_active=False.
     
     Args:
         menu_id: Menu ID
@@ -366,11 +374,7 @@ def delete_menu(menu_id: int) -> bool:
     if not menu:
         return False
     
-    # Delete menu ingredients first
-    FoodMenuIngredient.query.filter_by(menu_id=menu_id).delete()
-    
-    # Delete menu
-    db.session.delete(menu)
+    menu.is_active = False
     db.session.commit()
     
     return True
