@@ -20,6 +20,7 @@ def list_menus(
     limit: int = 10,
     search: Optional[str] = None,
     meal_type: Optional[str] = None,
+    target_role: Optional[str] = None,
     is_active: Optional[bool] = None
 ) -> Dict[str, Any]:
     """
@@ -50,6 +51,28 @@ def list_menus(
         
     if is_active is not None:
         query = query.filter(FoodMenu.is_active == is_active)
+
+    if target_role:
+        target_role = target_role.upper()
+        if target_role.startswith("ANAK_"):
+            # If searching for specific child age, also show generic "ANAK" and "ALL"
+            query = query.filter(db.or_(
+                FoodMenu.target_role == target_role,
+                FoodMenu.target_role == "ANAK",
+                FoodMenu.target_role == "ALL"
+            ))
+        elif target_role == "ANAK":
+            # If searching for generic child, show all child specific ones and "ALL"
+            query = query.filter(db.or_(
+                FoodMenu.target_role.like("ANAK%"),
+                FoodMenu.target_role == "ALL"
+            ))
+        else:
+            # For IBU or specific roles, show that and "ALL"
+            query = query.filter(db.or_(
+                FoodMenu.target_role == target_role,
+                FoodMenu.target_role == "ALL"
+            ))
         
     # Order by
     query = query.order_by(FoodMenu.meal_type, FoodMenu.name)
@@ -180,6 +203,7 @@ def create_menu(
     description: Optional[str] = None,
     cooking_instructions: Optional[str] = None,
     cooking_time_minutes: Optional[int] = None,
+    target_role: str = "ALL",
     is_active: bool = True,
     ingredients: List[Dict] = None
 ) -> int:
@@ -194,6 +218,7 @@ def create_menu(
         description: Menu description
         cooking_instructions: How to cook
         cooking_time_minutes: Time in minutes
+        target_role: IBU, ANAK, or ALL
         is_active: Whether menu is active
         ingredients: List of {ingredient_id, quantity_g}
         
@@ -219,6 +244,7 @@ def create_menu(
         description=description,
         cooking_instructions=cooking_instructions,
         cooking_time_minutes=cooking_time_minutes,
+        target_role=target_role.upper() if target_role else "ALL",
         is_active=is_active
     )
     db.session.add(menu)
@@ -252,6 +278,7 @@ def update_menu(
     description: Optional[str] = None,
     cooking_instructions: Optional[str] = None,
     cooking_time_minutes: Optional[int] = None,
+    target_role: Optional[str] = None,
     is_active: Optional[bool] = None,
     ingredients: Optional[List[Dict]] = None
 ) -> bool:
@@ -267,6 +294,7 @@ def update_menu(
         description: Menu description
         cooking_instructions: How to cook
         cooking_time_minutes: Time in minutes
+        target_role: IBU, ANAK, or ALL
         is_active: Whether menu is active
         ingredients: List of {ingredient_id, quantity_g} (replaces all)
         
@@ -295,6 +323,8 @@ def update_menu(
         menu.cooking_instructions = cooking_instructions
     if cooking_time_minutes is not None:
         menu.cooking_time_minutes = cooking_time_minutes
+    if target_role is not None:
+        menu.target_role = target_role.upper()
     if is_active is not None:
         menu.is_active = is_active
     

@@ -11,4 +11,5 @@ class FoodMenu(db.Model):
     description = db.Column(db.Text, nullable=True)
     cooking_instructions = db.Column(db.Text, nullable=True)
     cooking_time_minutes = db.Column(db.Integer, nullable=True)
+    target_role = db.Column(db.String(50), nullable=True, default="ALL") # IBU, ANAK, ALL
     is_active = db.Column(db.Boolean, nullable=False, default=True)

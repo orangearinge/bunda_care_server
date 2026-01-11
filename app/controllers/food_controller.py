@@ -222,6 +222,26 @@ def list_menus_handler():
     is_active_param = request.args.get("is_active")
     if is_active_param is not None:
         is_active = is_active_param.lower() == "true"
+
+    # Get user role for target_role filtering
+    target_role = request.args.get("target_role")
+    if not target_role:
+        user_id = getattr(request, "user_id", None)
+        if user_id:
+            pref = UserPreference.query.get(user_id)
+            if pref:
+                if pref.role == "ANAK_BATITA":
+                    total_months = (pref.age_year or 0) * 12 + (pref.age_month or 0)
+                    if 6 <= total_months <= 8:
+                        target_role = "ANAK_6_8"
+                    elif 9 <= total_months <= 11:
+                        target_role = "ANAK_9_11"
+                    elif 12 <= total_months <= 23:
+                        target_role = "ANAK_12_23"
+                    else:
+                        target_role = "ANAK"
+                else:
+                    target_role = "IBU"
     
     try:
         result = list_menus(
@@ -229,12 +249,12 @@ def list_menus_handler():
             limit=limit,
             search=search,
             meal_type=meal_type,
+            target_role=target_role,
             is_active=is_active
         )
         return ok(result)
     except Exception as e:
         return error("UNKNOWN_ERROR", str(e), 500)
-
 
 def create_menu_handler():
     """
@@ -268,6 +288,7 @@ def create_menu_handler():
             description=data.get("description"),
             cooking_instructions=data.get("cooking_instructions"),
             cooking_time_minutes=data.get("cooking_time_minutes"),
+            target_role=data.get("target_role", "ALL"),
             is_active=data.get("is_active", True),
             ingredients=data.get("ingredients", [])
         )
@@ -290,6 +311,7 @@ def update_menu_handler(menu_id: int):
         - description: Menu description
         - cooking_instructions: How to cook
         - cooking_time_minutes: Time in minutes
+        - target_role: IBU, ANAK, or ALL
         - is_active: Whether menu is active
         - ingredients: List of {ingredient_id, quantity_g} (replaces all)
     """
@@ -309,6 +331,7 @@ def update_menu_handler(menu_id: int):
             description=data.get("description"),
             cooking_instructions=data.get("cooking_instructions"),
             cooking_time_minutes=data.get("cooking_time_minutes"),
+            target_role=data.get("target_role"),
             is_active=data.get("is_active"),
             ingredients=data.get("ingredients")
         )
