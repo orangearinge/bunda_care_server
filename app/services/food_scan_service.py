@@ -20,40 +20,55 @@ def score_ingredient_match(
 ) -> float:
     """
     Calculate match score between detected label and ingredient.
-    
-    Args:
-        label: Detected label from AI recognition
-        ingredient: Ingredient to match against
-        confidence: AI confidence score
-        
-    Returns:
-        Match score (higher is better)
+    Prioritizes exact matches and whole word matches.
     """
-    label_lower = label.lower()
-    name_lower = (ingredient.name or "").lower()
-    alt_lower = (ingredient.alt_names or "").lower()
+    label_lower = label.lower().strip()
+    name_lower = (ingredient.name or "").lower().strip()
+    alt_lower = (ingredient.alt_names or "").lower().strip()
     
-    # Tokenize for word-level matching
-    label_tokens = set(label_lower.split())
-    name_tokens = set(name_lower.split())
-    alt_tokens = set(alt_lower.split())
+    # Clean label (replace dashes with spaces for dataset compatibility)
+    label_clean = label_lower.replace("-", " ")
+    label_tokens = set(label_clean.split())
     
-    # Calculate score based on various matching criteria
+    # Tokenize name and alt names
+    name_tokens = set(name_lower.replace("-", " ").split())
+    alt_tokens = set(alt_lower.replace("-", " ").split())
+    
     score = 0.0
     
-    # Token overlap scoring
+    # 1. Exact match (Highest priority)
+    if label_clean == name_lower:
+        score += 20.0
+    elif label_clean == alt_lower:
+        score += 15.0
+        
+    # 2. Whole word overlap
     name_overlap = len(label_tokens & name_tokens)
     alt_overlap = len(label_tokens & alt_tokens)
-    score += 3 * name_overlap + 2 * alt_overlap
+    score += 8.0 * name_overlap + 4.0 * alt_overlap
     
-    # Substring matching
-    if label_lower in name_lower:
-        score += 2
-    if label_lower in alt_lower:
-        score += 1
-    
+    # 3. Substring matching - ONLY if word boundaries match or label is long
+    # This prevents "kol" matching "tongkol"
+    def has_word_match(target, query):
+        if not query or not target: return False
+        # Exact word match using regex boundaries
+        import re
+        pattern = r'\b' + re.escape(query) + r'\b'
+        return bool(re.search(pattern, target))
 
+    if has_word_match(name_lower, label_clean):
+        score += 5.0
+    elif has_word_match(alt_lower, label_clean):
+        score += 3.0
     
+    # Basic substring fallback only for longer labels (>3 chars) 
+    # to avoid "kol" -> "tongkol" or "is" -> "pisang"
+    if len(label_clean) > 3:
+        if label_clean in name_lower:
+            score += 2.0
+        if label_clean in alt_lower:
+            score += 1.0
+
     # Apply confidence factor
     score = score * (0.5 + confidence)
     
