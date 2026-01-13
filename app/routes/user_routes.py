@@ -6,7 +6,9 @@ from app.controllers.user_controller import (
     get_dashboard_summary_handler,
     get_user_profile_handler,
     update_user_profile_handler,
-    update_avatar_handler
+    update_avatar_handler,
+    get_history_handler,
+    get_history_detail_handler
 )
 
 user_bp = Blueprint("user", __name__, url_prefix="/api/user")
@@ -30,7 +32,18 @@ def profile():
 def dashboard():
     return get_dashboard_summary_handler()
 
+@user_bp.route("/history", methods=["GET"])
+@require_auth
+def history():
+    return get_history_handler()
+
+@user_bp.route("/history/<date_str>", methods=["GET"])
+@require_auth
+def history_detail(date_str):
+    return get_history_detail_handler(date_str)
+
 @user_bp.route("/avatar", methods=["PUT"])
 @require_auth
 def avatar():
     return update_avatar_handler()
+

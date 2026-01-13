@@ -1,5 +1,5 @@
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from flask import request
 from app.extensions import db
 from app.models.preference import UserPreference
@@ -285,11 +285,24 @@ def get_dashboard_summary_handler():
 
     targets = calculate_nutritional_targets(pref)
 
-    # 2. Get Consumed Logs (Not strictly per day, as requested: 'jangan untuk perhari dulu')
-    # Filter only meals that have been marked as consumed/eaten
+    # 2. Get Consumed Logs for TODAY (WIB - GMT+7)
+    now_utc = datetime.utcnow()
+    now_wib = now_utc + timedelta(hours=7)
+    
+    # Calculate boundaries in WIB
+    start_of_day_wib = datetime(now_wib.year, now_wib.month, now_wib.day)
+    end_of_day_wib = start_of_day_wib + timedelta(days=1)
+    
+    # Convert WIB boundaries back to UTC to match DB (server_default=now())
+    start_of_day_utc = start_of_day_wib - timedelta(hours=7)
+    end_of_day_utc = end_of_day_wib - timedelta(hours=7)
+
+    # Filter only meals that have been marked as consumed/eaten TODAY
     logs = FoodMealLog.query.filter(
         FoodMealLog.user_id == user_id,
-        FoodMealLog.is_consumed == True
+        FoodMealLog.is_consumed == True,
+        FoodMealLog.logged_at >= start_of_day_utc,
+        FoodMealLog.logged_at < end_of_day_utc
     ).all()
 
     today_nutrition = {
@@ -308,7 +321,7 @@ def get_dashboard_summary_handler():
     }
 
     # 4. Get Recommendations (Prioritize current meal type based on time)
-    now_hour = (datetime.utcnow().hour + 7) % 24 # WIB
+    now_hour = now_wib.hour # Uses the WIB time calculated above
     current_meal_type = "BREAKFAST"
     if 10 <= now_hour < 15:
         current_meal_type = "LUNCH"
@@ -417,3 +430,103 @@ def get_dashboard_summary_handler():
         "remaining": remaining,
         "recommendations": dashboard_recommendations
     })
+
+
+def get_history_handler():
+    user_id = request.user_id
+    
+    # 1. Get current targets (as a reference)
+    pref = UserPreference.query.filter_by(user_id=user_id).first()
+    if not pref:
+        return error("PREFERENCE_REQUIRED", "Please complete preferences", 409)
+    targets = calculate_nutritional_targets(pref)
+
+    # 2. Get all consumed logs (sorted by date desc)
+    logs = FoodMealLog.query.filter_by(user_id=user_id, is_consumed=True).order_by(FoodMealLog.logged_at.desc()).all()
+    
+    history_map = {}
+    
+    for log in logs:
+        # Convert UTC to WIB Date for grouping
+        wib_time = log.logged_at + timedelta(hours=7)
+        date_str = wib_time.strftime("%Y-%m-%d")
+        
+        if date_str not in history_map:
+            history_map[date_str] = {
+                "date": date_str,
+                "calories": 0,
+                "protein_g": 0.0,
+                "carbs_g": 0.0,
+                "fat_g": 0.0,
+                "meal_count": 0
+            }
+        
+        history_map[date_str]["calories"] += log.total_calories
+        history_map[date_str]["protein_g"] += float(log.total_protein_g)
+        history_map[date_str]["carbs_g"] += float(log.total_carbs_g)
+        history_map[date_str]["fat_g"] += float(log.total_fat_g)
+        history_map[date_str]["meal_count"] += 1
+
+    # Convert map to sorted list
+    history_list = []
+    for date_str in sorted(history_map.keys(), reverse=True):
+        entry = history_map[date_str]
+        # Round values for clean response
+        entry["protein_g"] = round(entry["protein_g"], 1)
+        entry["carbs_g"] = round(entry["carbs_g"], 1)
+        entry["fat_g"] = round(entry["fat_g"], 1)
+        
+        # Add context targets (current targets are used as reference)
+        entry["target_calories"] = targets["calories"]
+        entry["percentage"] = min(100, int((entry["calories"] / targets["calories"]) * 100)) if targets["calories"] > 0 else 0
+        
+        history_list.append(entry)
+        
+    return ok(history_list)
+
+
+def get_history_detail_handler(date_str):
+    user_id = request.user_id
+    
+    try:
+        # Parse visual date string
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return error("INVALID_DATE", "Format must be YYYY-MM-DD", 400)
+    
+    # Calculate WIB boundaries for that specific date
+    start_of_day_wib = datetime.combine(target_date, time.min)
+    end_of_day_wib = datetime.combine(target_date, time.max)
+    
+    # Convert WIB boundaries back to UTC for DB query
+    start_of_day_utc = start_of_day_wib - timedelta(hours=7)
+    end_of_day_utc = end_of_day_wib - timedelta(hours=7)
+    
+    logs = FoodMealLog.query.filter(
+        FoodMealLog.user_id == user_id,
+        FoodMealLog.is_consumed == True,
+        FoodMealLog.logged_at >= start_of_day_utc,
+        FoodMealLog.logged_at <= end_of_day_utc
+    ).order_by(FoodMealLog.logged_at.asc()).all()
+    
+    # Load related menu data for names and images
+    menu_ids = [log.menu_id for log in logs]
+    menus = FoodMenu.query.filter(FoodMenu.id.in_(menu_ids or [0])).all()
+    menu_map = {menu.id: menu for menu in menus}
+    
+    result = []
+    for log in logs:
+        menu = menu_map.get(log.menu_id)
+        result.append({
+            "id": log.id,
+            "menu_name": menu.name if menu else "Makanan",
+            "image_url": menu.image_url if menu and menu.image_url else f"https://picsum.photos/seed/{log.menu_id}/200",
+            "calories": log.total_calories,
+            "protein_g": float(log.total_protein_g),
+            "carbs_g": float(log.total_carbs_g),
+            "fat_g": float(log.total_fat_g),
+            "logged_at": (log.logged_at + timedelta(hours=7)).isoformat()
+        })
+        
+    return ok(result)
+
