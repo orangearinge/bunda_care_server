@@ -1,7 +1,7 @@
 from flask import Blueprint, send_file, render_template_string
 import os
 
-test_bp = Blueprint("test", __name__, url_prefix="/test")
+test_bp = Blueprint("test", __name__, url_prefix="/api/test")
 
 @test_bp.get("/google-oauth")
 def test_google_oauth():
@@ -45,7 +45,7 @@ def test_home():
     <body>
         <h1>🧪 Bunda Care Test Pages</h1>
         <ul>
-            <li><a href="/test/google-oauth">🔐 Test Google OAuth</a></li>
+            <li><a href="/api/test/google-oauth">🔐 Test Google OAuth</a></li>
             <li><a href="/api/auth/google" onclick="alert('Use POST method!'); return false;">📡 API Endpoint (POST only)</a></li>
         </ul>
     </body>

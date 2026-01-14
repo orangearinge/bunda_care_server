@@ -6,7 +6,7 @@ from app.controllers.admin_user_controller import (
     update_user_role_handler
 )
 
-admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
 @admin_bp.get("/users")
 @require_admin
