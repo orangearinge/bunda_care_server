@@ -15,3 +15,8 @@ dotenv
 google-auth>=2.0
 requests>=2.0
 Flask-CORS>=4.0
+google-generativeai
+faiss-cpu
+sentence-transformers
+pypdf
+numpy

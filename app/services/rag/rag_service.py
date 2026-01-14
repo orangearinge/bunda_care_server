@@ -5,15 +5,23 @@ from google import genai
 from google.genai import types
 from flask import current_app
 
+from app.services.rag.processor import DocumentProcessor
+from app.services.rag.vector_store import VectorStore
+
 class RAGService:
     """
     RAG Service yang dioptimalkan untuk kesehatan ibu dan anak.
-    Menggunakan TF-IDF sederhana dan keyword expansion untuk pencarian yang lebih akurat.
+    Menggunakan Hybrid Search: Menggabungkan Pencarian Vektor (Semantik) 
+    dan Pencarian Keyword untuk akurasi maksimal.
     """
     
     def __init__(self, data_dir=None):
         self.chunks = []
         self.client = None
+        self.processor = DocumentProcessor()
+        self.vector_store = VectorStore()
+        self.data_dir = data_dir
+        
         self.stopwords = {'yang', 'dan', 'di', 'ke', 'dari', 'pada', 'untuk', 'adalah', 
                           'dengan', 'atau', 'ini', 'itu', 'dalam', 'akan', 'telah', 
                           'juga', 'oleh', 'sebagai', 'dapat', 'karena', 'apa', 'bagaimana'}
@@ -26,104 +34,100 @@ class RAGService:
             self._load_data(data_dir)
     
     def _load_data(self, data_dir):
-        """Load chunks dari CSV file dengan preprocessing."""
-        import csv
+        """Load data menggunakan DocumentProcessor dan siapkan VectorStore."""
         csv_path = os.path.join(data_dir, 'dataset_final.csv')
+        index_path = os.path.join(data_dir, 'bunda_care_vector')
         
         if os.path.exists(csv_path):
-            with open(csv_path, mode='r', encoding='utf-8-sig') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if 'sentence' in row and row['sentence']:
-                        # Simpan original text
-                        self.chunks.append(row['sentence'].strip())
+            # 1. Load teks asli menggunakan processor
+            self.chunks = self.processor.load_csv(csv_path)
+            print(f"Loaded {len(self.chunks)} chunks from CSV using DocumentProcessor")
             
-            print(f"Loaded {len(self.chunks)} chunks from CSV")
+            # 2. Coba load index FAISS jika sudah ada, jika tidak, buat baru
+            if os.path.exists(f"{index_path}.index"):
+                print("Loading existing vector index...")
+                self.vector_store.load(index_path)
+            else:
+                print("Building new vector index (this may take a moment)...")
+                self.vector_store.create_index(self.chunks)
+                self.vector_store.save(index_path)
         else:
             print(f"CSV file not found: {csv_path}")
     
     def _normalize_text(self, text):
         """Normalisasi text untuk matching yang lebih baik."""
-        # Lowercase
         text = text.lower()
-        # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
     
     def _extract_keywords(self, text):
         """Extract keywords dengan filtering stopwords."""
         text = self._normalize_text(text)
-        # Split by non-alphanumeric
         words = re.findall(r'\b\w+\b', text)
-        # Filter stopwords and short words
         keywords = [w for w in words if w not in self.stopwords and len(w) > 2]
         return keywords
     
-    def _calculate_relevance_score(self, chunk, query_keywords):
-        """
-        Hitung skor relevansi menggunakan multiple factors:
-        1. Keyword frequency
-        2. Keyword position (earlier is better)
-        3. Phrase matching (bonus for consecutive keywords)
-        """
+    def _calculate_keyword_score(self, chunk, query_keywords):
+        """Hitung skor relevansi berbasis kata kunci."""
         chunk_lower = self._normalize_text(chunk)
         score = 0
         
-        # Factor 1: Keyword frequency with TF weighting
-        chunk_words = chunk_lower.split()
         for keyword in query_keywords:
             count = chunk_lower.count(keyword)
             if count > 0:
-                # TF score: more occurrences = higher score, but with diminishing returns
                 score += (count * 10) + (count ** 0.5 * 5)
-                
-                # Factor 2: Position bonus (keywords appearing early get bonus)
                 try:
                     position = chunk_lower.index(keyword)
-                    position_bonus = max(0, 50 - (position / 10))  # Max 50 points for position 0
+                    position_bonus = max(0, 50 - (position / 10))
                     score += position_bonus
                 except ValueError:
                     pass
         
-        # Factor 3: Phrase matching bonus
         query_text = ' '.join(query_keywords)
         if query_text in chunk_lower:
-            score += 100  # Big bonus for exact phrase match
-        
-        # Factor 4: Partial phrase matching (consecutive keywords)
-        for i in range(len(query_keywords) - 1):
-            two_word_phrase = f"{query_keywords[i]} {query_keywords[i+1]}"
-            if two_word_phrase in chunk_lower:
-                score += 30
+            score += 100
         
         return score
     
     def rag_search(self, query):
         """
-        Optimized semantic search dengan multiple ranking factors.
+        Hybrid Search: Menggabungkan kelebihan Vector Search dan Keyword Search.
         """
         if not self.chunks:
             return ""
         
-        # Extract keywords dari query
+        # 1. Semantic Search (Model AI)
+        # Menemukan hasil yang mirip secara makna meski kata-katanya berbeda
+        semantic_results = self.vector_store.search(query, top_k=10)
+        
+        # 2. Keyword Search (Manual)
+        # Menemukan hasil yang mengandung kata-kata spesifik yang tepat
         query_keywords = self._extract_keywords(query)
-        
         if not query_keywords:
-            # Jika tidak ada keywords (query sangat pendek), gunakan query langsung
             query_keywords = [self._normalize_text(query)]
+            
+        scored_chunks = {}
         
-        # Calculate relevance score untuk setiap chunk
-        scored_chunks = []
+        # Beri skor awal dari hasil semantic search
+        for i, chunk in enumerate(semantic_results):
+            # Hasil teratas diberi skor lebih tinggi
+            semantic_score = (10 - i) * 20 
+            scored_chunks[chunk] = semantic_score
+            
+        # Tambahkan skor dari keyword matching
         for chunk in self.chunks:
-            score = self._calculate_relevance_score(chunk, query_keywords)
-            if score > 0:
-                scored_chunks.append((score, chunk))
+            k_score = self._calculate_keyword_score(chunk, query_keywords)
+            if k_score > 0:
+                if chunk in scored_chunks:
+                    scored_chunks[chunk] += k_score
+                else:
+                    scored_chunks[chunk] = k_score
         
-        # Sort by score descending
-        scored_chunks.sort(reverse=True, key=lambda x: x[0])
+        # Urutkan berdasarkan total skor tertinggi
+        sorted_results = sorted(scored_chunks.items(), key=lambda x: x[1], reverse=True)
         
-        # Ambil top 20 untuk diversity, tapi tetap relevant
-        top_chunks = [chunk for score, chunk in scored_chunks[:20]]
+        # Ambil top 15 untuk konteks Gemini
+        top_chunks = [item[0] for item in sorted_results[:15]]
         
         return "\n---\n".join(top_chunks)
     
@@ -161,7 +165,6 @@ class RAGService:
         )
 
         try:
-            # Safety settings untuk konten kesehatan
             safety_settings = [
                 types.SafetySetting(category='HARM_CATEGORY_HATE_SPEECH', threshold='BLOCK_NONE'),
                 types.SafetySetting(category='HARM_CATEGORY_HARASSMENT', threshold='BLOCK_NONE'),
@@ -173,10 +176,10 @@ class RAGService:
                 model='gemini-flash-latest',
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
-                    temperature=0.2,  # Rendah untuk akurasi, tapi tidak 0 agar bahasa tetap natural
-                    max_output_tokens=1200,  # Cukup untuk jawaban detail
-                    top_p=0.9,  # Fokus pada token dengan probabilitas tinggi
-                    top_k=40,  # Batasi pilihan token untuk konsistensi
+                    temperature=0.2,
+                    max_output_tokens=1200,
+                    top_p=0.9,
+                    top_k=40,
                     safety_settings=safety_settings
                 )
             )
@@ -184,7 +187,6 @@ class RAGService:
             if response and response.text:
                 return response.text.strip()
             else:
-                # Log untuk debugging
                 current_app.logger.warning(f"Empty response from Gemini for query: {query}")
                 return (
                     "Maaf Bunda, saya mengalami kendala dalam memproses jawaban saat ini. "
@@ -193,7 +195,6 @@ class RAGService:
                 
         except Exception as e:
             current_app.logger.error(f"Gemini API Error: {str(e)}")
-            # Jangan expose error detail ke user
             return (
                 "Terjadi kesalahan teknis saat memproses pertanyaan Bunda. "
                 "Tim kami telah mencatat masalah ini. Silakan coba lagi dalam beberapa saat."
@@ -202,14 +203,9 @@ class RAGService:
     def chat(self, query):
         """
         Entry point utama untuk RAG chat.
-        Menggabungkan retrieval dan generation.
         """
-        # Input validation
         if not query or len(query.strip()) < 3:
             return "Maaf Bunda, pertanyaan terlalu pendek. Silakan jelaskan pertanyaan Bunda dengan lebih detail."
         
-        # Retrieve relevant context
         context = self.rag_search(query)
-        
-        # Generate answer
         return self.generate_answer(query, context)
