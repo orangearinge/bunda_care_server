@@ -7,6 +7,7 @@ from .admin_routes import admin_bp
 from .test_routes import test_bp
 from .chat_routes import chat_bp
 from .article_routes import article_bp
+from .feedback_routes import feedback_bp
 
 def register_routes(app):
     app.register_blueprint(home_bp)
@@ -18,3 +19,4 @@ def register_routes(app):
     app.register_blueprint(test_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(article_bp)
+    app.register_blueprint(feedback_bp)
