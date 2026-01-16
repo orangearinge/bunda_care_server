@@ -7,7 +7,7 @@ _model = None
 _model_err = None
 
 def _model_path():
-    return os.path.join(os.path.dirname(__file__), "best.pt")
+    return os.path.join(os.path.dirname(__file__), "best2.pt")
 
 def _load_model():
     global _model, _model_err
@@ -46,7 +46,10 @@ def recognize(image_file) -> List[Dict]:
             tmp.flush()
             tmp.close()
 
-            results = model(tmp.name)
+            # Naikkan conf sedikit lagi ke 0.20 untuk membuang item "halu" yang tersisa.
+            # agnostic_nms=True: Mencegah dua label berbeda (misal Tahu & Tempe) terdeteksi di koordinat yang sama persis (overlap).
+            # Hanya label dengan confidence tertinggi yang akan diambil untuk area tersebut.
+            results = model(tmp.name, conf=0.20, imgsz=1280, agnostic_nms=True)
             labels: List[Dict] = []
             try:
                 r = results[0]
@@ -85,11 +88,15 @@ def recognize(image_file) -> List[Dict]:
 
             if labels:
                 try:
-                    labels = [it for it in labels if float(it.get("confidence") or 0) >= 0.15]
+                    # Filter manual sesuaikan dengan threshold 0.20
+                    labels = [it for it in labels if float(it.get("confidence") or 0) >= 0.30]
                 except Exception:
                     pass
-                if len(labels) > 20:
-                    labels = labels[:20]
+                # Jangan batasi jumlah raw labels di sini (dulu dibatasi 20).
+                # Karena jika ada banyak objek yang sama (misal 20 butir nasi), objek lain (ayam) bias tertutup.
+                # Biarkan semua masuk ke deduplikasi dulu.
+                # if len(labels) > 20:
+                #    labels = labels[:20]
 
                 # Deduplicate by label keeping max confidence
                 best = {}
@@ -100,7 +107,8 @@ def recognize(image_file) -> List[Dict]:
                         best[lab] = {"label": lab, "confidence": conf}
                 out = list(best.values())
                 out.sort(key=lambda x: x.get("confidence", 0), reverse=True)
-                return out[:5]
+                # Kembalikan lebih banyak item (misal 20) agar ingredients tidak terpotong
+                return out[:20]
         except Exception:
             pass
         finally:
