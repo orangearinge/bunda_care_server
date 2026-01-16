@@ -2,7 +2,8 @@ from flask import request
 from sqlalchemy import or_
 from app.extensions import db
 from app.models.ingredient import FoodIngredient
-from app.utils.http import ok, error, json_body, arg_int
+from app.utils.http import ok, error, json_body, arg_int, validate_schema
+from app.schemas.ingredient_schema import IngredientSchema, IngredientQuerySchema
 
 def get_all_ingredients():
     """
@@ -13,9 +14,20 @@ def get_all_ingredients():
         - limit: Items per page (default: 10)
         - search: Search term for name or alternative names
     """
-    page = arg_int("page", 1, min_value=1)
-    limit = arg_int("limit", 10, min_value=1, max_value=100)
-    search = (request.args.get("search") or "").strip()
+    query_data = {
+        "page": request.args.get("page"),
+        "limit": request.args.get("limit"),
+        "search": request.args.get("search")
+    }
+    query_data = {k: v for k, v in query_data.items() if v is not None}
+    
+    data, errors = validate_schema(IngredientQuerySchema, query_data)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid query parameters", 400, details=errors)
+
+    page = data["page"]
+    limit = data["limit"]
+    search = data.get("search")
     
     query = FoodIngredient.query
     
@@ -55,10 +67,11 @@ def get_all_ingredients():
     })
 
 def create_ingredient():
-    data = json_body()
-    name = (data.get("name") or "").strip()
-    if not name:
-        return error("VALIDATION_ERROR", "Name is required", 400)
+    data, errors = validate_schema(IngredientSchema, json_body())
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
+    
+    name = data["name"]
     
     existing = FoodIngredient.query.filter_by(name=name).first()
     if existing:
@@ -73,6 +86,7 @@ def create_ingredient():
             carbs_g=data.get("carbs_g", 0),
             fat_g=data.get("fat_g", 0)
         )
+
         db.session.add(ing)
         db.session.commit()
         return ok({
@@ -93,24 +107,21 @@ def update_ingredient(id):
     if not ing:
         return error("NOT_FOUND", "Ingredient not found", 404)
     
-    data = json_body()
-    name = (data.get("name") or "").strip()
-    if name:
+    data, errors = validate_schema(IngredientSchema, json_body(), partial=True)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
+    
+    if "name" in data:
+        name = data["name"]
         existing = FoodIngredient.query.filter(FoodIngredient.name == name, FoodIngredient.id != id).first()
         if existing:
             return error("DUPLICATE_ENTRY", "Ingredient with this name already exists", 409)
         ing.name = name
     
-    if "alt_names" in data:
-        ing.alt_names = data["alt_names"]
-    if "calories" in data:
-        ing.calories = data["calories"]
-    if "protein_g" in data:
-        ing.protein_g = data["protein_g"]
-    if "carbs_g" in data:
-        ing.carbs_g = data["carbs_g"]
-    if "fat_g" in data:
-        ing.fat_g = data["fat_g"]
+    for field in ["alt_names", "calories", "protein_g", "carbs_g", "fat_g"]:
+        if field in data:
+            setattr(ing, field, data[field])
+
 
     try:
         db.session.commit()

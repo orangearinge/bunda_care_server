@@ -20,3 +20,5 @@ faiss-cpu
 sentence-transformers
 pypdf
 numpy
+marshmallow>=3.20.0
+

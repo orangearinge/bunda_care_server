@@ -43,7 +43,16 @@ def parse_iso_datetime(value: Any):
     try:
         from datetime import datetime
         if isinstance(value, str):
-            return datetime.fromisoformat(value)
+            return datetime.fromisoformat(value.replace('Z', '+00:00'))
     except Exception:
         pass
     return None
+
+
+def validate_schema(schema, data, partial=False):
+    from marshmallow import ValidationError
+    try:
+        return schema().load(data, partial=partial), None
+    except ValidationError as err:
+        return None, err.messages
+

@@ -18,7 +18,7 @@ from app.models.ingredient import FoodIngredient
 from app.models.menu import FoodMenu
 from app.models.menu_ingredient import FoodMenuIngredient
 from app.models.preference import UserPreference
-from app.utils.http import ok, error, json_body, arg_int
+from app.utils.http import ok, error, json_body, arg_int, validate_schema
 from app.utils.enums import UserRole, TargetRole, MealType
 
 # Import services
@@ -36,6 +36,12 @@ from app.services.menu_service import (
 from app.services.food_helpers import (
     parse_detected_ids_from_query,
     parse_detected_ids_from_body
+)
+from app.schemas.food_schema import (
+    CreateMenuSchema,
+    UpdateMenuSchema,
+    CreateMealLogSchema,
+    ListMenuQuerySchema
 )
 
 
@@ -132,27 +138,15 @@ def create_meal_log_handler():
     from app.utils.http import parse_iso_datetime
     
     user_id = request.user_id
-    data = json_body()
+    data, errors = validate_schema(CreateMealLogSchema, json_body())
     
-    # Validate menu_id
-    try:
-        menu_id = int(data.get("menu_id"))
-    except (ValueError, TypeError):
-        return error("VALIDATION_ERROR", "menu_id required", 400)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
     
-    # Parse servings
-    try:
-        servings = float(data.get("servings")) if data.get("servings") is not None else 1.0
-    except (ValueError, TypeError):
-        servings = 1.0
-    
-    if servings <= 0:
-        servings = 1.0
-    
-    is_consumed = data.get("is_consumed", False)
-    
-    # Parse logged_at
-    logged_at = parse_iso_datetime(data.get("logged_at")) or datetime.utcnow()
+    menu_id = data["menu_id"]
+    servings = data["servings"]
+    is_consumed = data["is_consumed"]
+    logged_at = data.get("logged_at") or datetime.utcnow()
     
     try:
         result = create_meal_log(
@@ -173,6 +167,7 @@ def create_meal_log_handler():
     except Exception as e:
         db.session.rollback()
         return error("UNKNOWN_ERROR", str(e), 500)
+
 
 
 def confirm_meal_log_handler(log_id: int):
@@ -214,18 +209,29 @@ def list_menus_handler():
         - meal_type: Filter by meal type
         - is_active: Filter by active status (true/false)
     """
-    page = arg_int("page", 1, min_value=1)
-    limit = arg_int("limit", 10, min_value=1, max_value=100)
-    search = (request.args.get("search") or "").strip() or None
-    meal_type = (request.args.get("meal_type") or "").strip() or None
+    # Validate query parameters
+    query_data = {
+        "page": request.args.get("page"),
+        "limit": request.args.get("limit"),
+        "search": request.args.get("search"),
+        "meal_type": request.args.get("meal_type"),
+        "is_active": request.args.get("is_active"),
+        "target_role": request.args.get("target_role")
+    }
+    # Filter out None values to let schema defaults kick in
+    query_data = {k: v for k, v in query_data.items() if v is not None}
     
-    is_active = None
-    is_active_param = request.args.get("is_active")
-    if is_active_param is not None:
-        is_active = is_active_param.lower() == "true"
+    data, errors = validate_schema(ListMenuQuerySchema, query_data)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid query parameters", 400, details=errors)
 
-    # Get user role for target_role filtering
-    target_role = request.args.get("target_role")
+    page = data["page"]
+    limit = data["limit"]
+    search = data.get("search")
+    meal_type = data.get("meal_type")
+    is_active = data.get("is_active")
+    target_role = data.get("target_role")
+
     if not target_role:
         user_id = getattr(request, "user_id", None)
         if user_id:
@@ -268,22 +274,18 @@ def create_menu_handler():
         - is_active (optional): Whether menu is active (default: True)
         - ingredients (optional): List of {ingredient_id, quantity_g}
     """
-    data = json_body()
+    # Validate input
+    data, errors = validate_schema(CreateMenuSchema, json_body())
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
     
     # Debug logging
     print(f"[CREATE MENU] Received data: {data}")
     
-    # Validate required fields
-    name = (data.get("name") or "").strip()
-    meal_type = (data.get("meal_type") or "").strip()
-    
-    if not name or not meal_type:
-        return error("VALIDATION_ERROR", "Name and meal_type are required", 400)
-    
     try:
         menu_id = create_menu(
-            name=name,
-            meal_type=meal_type,
+            name=data["name"],
+            meal_type=data["meal_type"],
             tags=data.get("tags", ""),
             image_url=data.get("image_url"),
             description=data.get("description"),
@@ -298,6 +300,7 @@ def create_menu_handler():
     except Exception as e:
         db.session.rollback()
         return error("UNKNOWN_ERROR", str(e), 500)
+
 
 
 def update_menu_handler(menu_id: int):
@@ -316,7 +319,10 @@ def update_menu_handler(menu_id: int):
         - is_active: Whether menu is active
         - ingredients: List of {ingredient_id, quantity_g} (replaces all)
     """
-    data = json_body()
+    # Validate input
+    data, errors = validate_schema(UpdateMenuSchema, json_body(), partial=True)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
     
     # Debug logging
     print(f"[UPDATE MENU] Menu ID: {menu_id}")
@@ -345,6 +351,7 @@ def update_menu_handler(menu_id: int):
     except Exception as e:
         db.session.rollback()
         return error("UNKNOWN_ERROR", str(e), 500)
+
 
 
 def delete_menu_handler(menu_id: int):

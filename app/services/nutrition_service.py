@@ -9,7 +9,7 @@ from datetime import date
 from flask import request
 
 from app.models.preference import UserPreference
-from app.utils.enums import UserRole
+from app.utils.enums import UserRole, LactationPhase
 from app.services.food_constants import (
     CALORIES_PER_GRAM_CARBS,
     CALORIES_PER_GRAM_FAT,
@@ -189,11 +189,11 @@ def calculate_lactating_targets(
     """Calculate calorie and macronutrient targets for lactating women."""
     # Use lactation_phase from preference ("0-6" or "6-12")
     # Default to "0-6" if not set
-    period = preference.lactation_phase or "0-6"
+    period = preference.lactation_phase or LactationPhase.PHASE_0_6.value
     
     # Ensure period is valid, fallback to "0-6"
     if period not in AKG_TAMBAHAN_MENYUSUI:
-        period = "0-6"
+        period = LactationPhase.PHASE_0_6.value
         
     increment = AKG_TAMBAHAN_MENYUSUI[period]
     

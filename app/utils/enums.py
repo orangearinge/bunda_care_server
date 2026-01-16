@@ -18,3 +18,7 @@ class MealType(str, Enum):
     BREAKFAST = "BREAKFAST"
     LUNCH = "LUNCH"
     DINNER = "DINNER"
+
+class LactationPhase(str, Enum):
+    PHASE_0_6 = "0-6"
+    PHASE_6_12 = "6-12"

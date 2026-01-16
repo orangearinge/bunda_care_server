@@ -10,16 +10,25 @@ from app.models.menu import FoodMenu
 from app.models.ingredient import FoodIngredient
 from app.models.menu_ingredient import FoodMenuIngredient
 from app.utils.auth import create_token
-from app.utils.http import ok, error, json_body
+from app.utils.http import ok, error, json_body, validate_schema
 from app.utils.enums import UserRole, MealType
 from app.services.nutrition_service import calculate_nutritional_targets
 from app.services.recommendation_service import generate_meal_recommendations
-
+from app.schemas.user_schema import (
+    UserPreferenceSchema, 
+    UserProfileUpdateSchema, 
+    AvatarUpdateSchema
+)
 
 def upsert_preference_handler():
     user_id = request.user_id
     body = json_body()
-    print(f"DEBUG UPSERT: Body received: {body}")
+    
+    # --- VALDIATE INPUT ---
+    data, errors = validate_schema(UserPreferenceSchema, body, partial=True)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
+
 
     # --- STEP 1: GET OR CREATE USER PREFERENCE ---
     pref = UserPreference.query.filter_by(user_id=user_id).first()
@@ -27,68 +36,30 @@ def upsert_preference_handler():
 
     if not pref:
         is_new = True
-        default_role = body.get("role") or request.user_role or UserRole.IBU_HAMIL
+        default_role = data.get("role") or request.user_role or UserRole.IBU_HAMIL.value
         pref = UserPreference(user_id=user_id, role=default_role.upper())
         db.session.add(pref)
 
-    # --- STEP 2: UPDATE SIMPLE FIELDS TERLEBIH DAHULU ---
-    # Numeric casting mapping
-    numeric_fields = {
-        "height_cm": int,
-        "weight_kg": float,
-        "age_year": int,
-        "age_month": int,
-        "lila_cm": float
-    }
-
-    for field in ["height_cm", "weight_kg", "age_year", "age_month", "lila_cm", "lactation_phase"]:
-        if field in body:
-            val = body[field]
-            if val is not None and field in numeric_fields:
-                try:
-                    val = numeric_fields[field](val)
-                except (ValueError, TypeError):
-                    pass # Keep original value or handle error
-            setattr(pref, field, val)
-
-    # Special handling for hpht (date)
-    if "hpht" in body:
-        val = body["hpht"]
-        if val:
-            try:
-                # Expecting YYYY-MM-DD or date object
-                if isinstance(val, str):
-                    pref.hpht = datetime.strptime(val, "%Y-%m-%d").date()
-                else:
-                    pref.hpht = val
-            except (ValueError, TypeError):
-                return error("INVALID_FORMAT", "hpht must be in YYYY-MM-DD format", 400)
-        else:
-            pref.hpht = None
-
-    # --- STEP 3: HANDLE ARRAY FIELDS (PASTIKAN SELALU LIST) ---
-    list_fields = ["food_prohibitions", "allergens"]
-
-    for field in list_fields:
-        if field in body:
-            val = body[field]
-            if isinstance(val, list):
-                setattr(pref, field, val)
-            elif val in (None, "", " ", []):
-                setattr(pref, field, [])
-            else:
-                return error("INVALID_FORMAT", f"'{field}' must be a list", 400)
+    # --- STEP 2: UPDATE FIELDS FROM DATA ---
+    fields_to_update = [
+        "height_cm", "weight_kg", "age_year", "age_month", 
+        "lila_cm", "lactation_phase", "hpht", 
+        "food_prohibitions", "allergens"
+    ]
+    
+    for field in fields_to_update:
+        if field in data:
+            setattr(pref, field, data[field])
 
     # --- STEP 4: GET USER AND UPDATE NAME ---
     user = User.query.get(user_id)
 
-    # Update name if provided (independent of role update)
-    incoming_name = body.get("name") or body.get("nama")
-    if user and incoming_name:
-        user.name = incoming_name
+    # Update name if provided
+    if user and data.get("name"):
+        user.name = data["name"]
 
-    # --- STEP 4.5: ROLE UPDATE (HANYA JIKA ADA DI BODY) ---
-    incoming_role = body.get("role")
+    # --- STEP 4.5: ROLE UPDATE ---
+    incoming_role = data.get("role")
     role_changed = False
 
     if incoming_role:
@@ -110,36 +81,24 @@ def upsert_preference_handler():
         if user and user.role_id != role_obj.id:
             user.role_id = role_obj.id
 
-    # Role final setelah update
-    current_role = pref.role.upper()
-
-    # --- STEP 5: ROLE VALIDATION ---
-    ROLE_REQUIREMENTS = {
-        UserRole.IBU_HAMIL: [
-            "weight_kg", "height_cm", "age_year",
-            "hpht", "lila_cm"
-        ],
-        UserRole.IBU_MENYUSUI: [
-            "weight_kg", "height_cm", "age_year", "lactation_phase"
-        ],
-        UserRole.ANAK_BATITA: [
-            "weight_kg", "height_cm", "age_year", "age_month"
-        ],
+    # --- STEP 5: FINAL SCHEMA VALIDATION FOR ROLE REQUIREMENTS ---
+    # Re-validate fully if it's not partial anymore or just to be sure
+    # Since we did partial=True above, we should check if the resulting pref is valid
+    # But our schema validates_schema already ran during validate_schema call.
+    # If we need to ensure the final state is valid:
+    full_data = {
+        "role": pref.role,
+        "height_cm": pref.height_cm,
+        "weight_kg": float(pref.weight_kg) if pref.weight_kg is not None else None,
+        "age_year": pref.age_year,
+        "age_month": pref.age_month,
+        "hpht": pref.hpht,
+        "lila_cm": pref.lila_cm,
+        "lactation_phase": pref.lactation_phase
     }
-
-    if current_role in ROLE_REQUIREMENTS:
-        missing = []
-        for key in ROLE_REQUIREMENTS[current_role]:
-            val = getattr(pref, key, None)
-            if val is None:
-                missing.append(key)
-
-        if missing:
-            return error(
-                "VALIDATION_ERROR",
-                f"Missing required fields for {current_role}: {', '.join(missing)}",
-                400
-            )
+    _, errors = validate_schema(UserPreferenceSchema, full_data)
+    if errors:
+        return error("VALIDATION_ERROR", "Incomplete preference data for selected role", 400, details=errors)
 
     # --- STEP 6: COMMIT ---
     db.session.commit()
@@ -196,7 +155,9 @@ def get_user_profile_handler():
 
 def update_user_profile_handler():
     user_id = request.user_id
-    body = json_body()
+    data, errors = validate_schema(UserProfileUpdateSchema, json_body(), partial=True)
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
 
     # Get user
     user = User.query.get(user_id)
@@ -204,10 +165,11 @@ def update_user_profile_handler():
         return error("USER_NOT_FOUND", "User not found", 404)
 
     # Update allowed fields
-    allowed_fields = ['name', 'avatar']
-    for field in allowed_fields:
-        if field in body and body[field] is not None:
-            setattr(user, field, body[field])
+    if "name" in data:
+        user.name = data["name"]
+    if "avatar" in data:
+        user.avatar = data["avatar"]
+
 
     db.session.commit()
 
@@ -225,16 +187,18 @@ def update_user_profile_handler():
 
 def update_avatar_handler():
     user_id = request.user_id
-    body = json_body()
-    avatar_url = body.get("avatar") or body.get("avatar_url")
-    if not avatar_url:
-        return error("INVALID_INPUT", "Avatar URL is required", 400)
+    data, errors = validate_schema(AvatarUpdateSchema, json_body())
+    if errors:
+        return error("VALIDATION_ERROR", "Invalid input data", 400, details=errors)
+
+    avatar_url = data.get("avatar") or data.get("avatar_url")
 
     user = User.query.get(user_id)
     if not user:
         return error("USER_NOT_FOUND", "User not found", 404)
 
     user.avatar = avatar_url
+
     db.session.commit()
 
     return ok({"user_id": user_id, "avatar": avatar_url})
