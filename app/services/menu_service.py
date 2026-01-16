@@ -13,6 +13,7 @@ from app.models.menu import FoodMenu
 from app.models.menu_ingredient import FoodMenuIngredient
 from app.services.food_constants import MEAL_TYPES
 from app.utils.http import arg_int
+from app.utils.enums import TargetRole
 
 
 def list_menus(
@@ -57,24 +58,24 @@ def list_menus(
 
     if target_role:
         target_role = target_role.upper()
-        if target_role.startswith("ANAK_"):
+        if target_role.startswith(TargetRole.ANAK + "_"):
             # If searching for specific child age, also show generic "ANAK" and "ALL"
             query = query.filter(db.or_(
                 FoodMenu.target_role == target_role,
-                FoodMenu.target_role == "ANAK",
-                FoodMenu.target_role == "ALL"
+                FoodMenu.target_role == TargetRole.ANAK,
+                FoodMenu.target_role == TargetRole.ALL
             ))
-        elif target_role == "ANAK":
+        elif target_role == TargetRole.ANAK:
             # If searching for generic child, show all child specific ones and "ALL"
             query = query.filter(db.or_(
-                FoodMenu.target_role.like("ANAK%"),
-                FoodMenu.target_role == "ALL"
+                FoodMenu.target_role.like(f"{TargetRole.ANAK}%"),
+                FoodMenu.target_role == TargetRole.ALL
             ))
         else:
             # For IBU or specific roles, show that and "ALL"
             query = query.filter(db.or_(
                 FoodMenu.target_role == target_role,
-                FoodMenu.target_role == "ALL"
+                FoodMenu.target_role == TargetRole.ALL
             ))
         
     # Order by
@@ -211,7 +212,7 @@ def create_menu(
     description: Optional[str] = None,
     cooking_instructions: Optional[str] = None,
     cooking_time_minutes: Optional[int] = None,
-    target_role: str = "ALL",
+    target_role: str = TargetRole.ALL,
     is_active: bool = True,
     ingredients: List[Dict] = None
 ) -> int:
@@ -252,7 +253,7 @@ def create_menu(
         description=description,
         cooking_instructions=cooking_instructions,
         cooking_time_minutes=cooking_time_minutes,
-        target_role=target_role.upper() if target_role else "ALL",
+        target_role=target_role.upper() if target_role else TargetRole.ALL,
         is_active=is_active
     )
     db.session.add(menu)

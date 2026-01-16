@@ -24,6 +24,7 @@ from app.services.food_constants import (
     DEFAULT_MIN_HITS
 )
 from app.utils.http import arg_int
+from app.utils.enums import UserRole, TargetRole
 
 
 def is_menu_allowed(
@@ -250,19 +251,19 @@ def generate_meal_recommendations(
                 continue
             
             # Filter by target_role
-            user_role_cat = "IBU"
-            if preference.role == "ANAK_BATITA":
+            user_role_cat = TargetRole.IBU
+            if preference.role == UserRole.ANAK_BATITA:
                 total_months = (preference.age_year or 0) * 12 + (preference.age_month or 0)
                 if 6 <= total_months <= 8:
-                    user_role_cat = "ANAK_6_8"
+                    user_role_cat = TargetRole.ANAK_6_8
                 elif 9 <= total_months <= 11:
-                    user_role_cat = "ANAK_9_11"
+                    user_role_cat = TargetRole.ANAK_9_11
                 elif 12 <= total_months: # Covers 12-23m and older toddlers (2-3y)
-                    user_role_cat = "ANAK_12_23"
+                    user_role_cat = TargetRole.ANAK_12_23
                 else:
-                    user_role_cat = "ANAK" # Fallback
+                    user_role_cat = TargetRole.ANAK # Fallback
 
-            menu_target = (menu.target_role or "ALL").upper()
+            menu_target = (menu.target_role or TargetRole.ALL).upper()
             
             # Match Logic:
             # 1. "ALL" matches everyone
@@ -270,10 +271,10 @@ def generate_meal_recommendations(
             # 3. Specific "ANAK_X_Y" matches only that age range
             # 4. "IBU" matches non-children
             
-            if menu_target == "ALL":
+            if menu_target == TargetRole.ALL:
                 pass # Always allow
-            elif preference.role == "ANAK_BATITA":
-                if menu_target == "IBU":
+            elif preference.role == UserRole.ANAK_BATITA:
+                if menu_target == TargetRole.IBU:
                     continue # Child can't eat adult food
                 if menu_target.startswith("ANAK_") and menu_target != user_role_cat:
                     continue # Wrong age range
@@ -281,7 +282,7 @@ def generate_meal_recommendations(
                 # User is IBU
                 if menu_target.startswith("ANAK"):
                     continue # Ibu doesn't usually get recommended baby food
-                if menu_target != "IBU":
+                if menu_target != TargetRole.IBU:
                     # This covers specific ANAK tags if any leaked
                     continue
             

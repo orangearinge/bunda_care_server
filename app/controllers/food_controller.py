@@ -19,6 +19,7 @@ from app.models.menu import FoodMenu
 from app.models.menu_ingredient import FoodMenuIngredient
 from app.models.preference import UserPreference
 from app.utils.http import ok, error, json_body, arg_int
+from app.utils.enums import UserRole, TargetRole, MealType
 
 # Import services
 from app.services.food_scan_service import scan_food_image
@@ -230,18 +231,18 @@ def list_menus_handler():
         if user_id:
             pref = UserPreference.query.get(user_id)
             if pref:
-                if pref.role == "ANAK_BATITA":
+                if pref.role == UserRole.ANAK_BATITA:
                     total_months = (pref.age_year or 0) * 12 + (pref.age_month or 0)
                     if 6 <= total_months <= 8:
-                        target_role = "ANAK_6_8"
+                        target_role = TargetRole.ANAK_6_8
                     elif 9 <= total_months <= 11:
-                        target_role = "ANAK_9_11"
+                        target_role = TargetRole.ANAK_9_11
                     elif 12 <= total_months <= 23:
-                        target_role = "ANAK_12_23"
+                        target_role = TargetRole.ANAK_12_23
                     else:
-                        target_role = "ANAK"
+                        target_role = TargetRole.ANAK
                 else:
-                    target_role = "IBU"
+                    target_role = TargetRole.IBU
     
     try:
         result = list_menus(
@@ -288,7 +289,7 @@ def create_menu_handler():
             description=data.get("description"),
             cooking_instructions=data.get("cooking_instructions"),
             cooking_time_minutes=data.get("cooking_time_minutes"),
-            target_role=data.get("target_role", "ALL"),
+            target_role=data.get("target_role", TargetRole.ALL),
             is_active=data.get("is_active", True),
             ingredients=data.get("ingredients", [])
         )

@@ -11,6 +11,7 @@ from app.models.ingredient import FoodIngredient
 from app.models.menu_ingredient import FoodMenuIngredient
 from app.utils.auth import create_token
 from app.utils.http import ok, error, json_body
+from app.utils.enums import UserRole, MealType
 from app.services.nutrition_service import calculate_nutritional_targets
 from app.services.recommendation_service import generate_meal_recommendations
 
@@ -26,7 +27,7 @@ def upsert_preference_handler():
 
     if not pref:
         is_new = True
-        default_role = body.get("role") or request.user_role or "IBU_HAMIL"
+        default_role = body.get("role") or request.user_role or UserRole.IBU_HAMIL
         pref = UserPreference(user_id=user_id, role=default_role.upper())
         db.session.add(pref)
 
@@ -114,14 +115,14 @@ def upsert_preference_handler():
 
     # --- STEP 5: ROLE VALIDATION ---
     ROLE_REQUIREMENTS = {
-        "IBU_HAMIL": [
+        UserRole.IBU_HAMIL: [
             "weight_kg", "height_cm", "age_year",
             "hpht", "lila_cm"
         ],
-        "IBU_MENYUSUI": [
+        UserRole.IBU_MENYUSUI: [
             "weight_kg", "height_cm", "age_year", "lactation_phase"
         ],
-        "ANAK_BATITA": [
+        UserRole.ANAK_BATITA: [
             "weight_kg", "height_cm", "age_year", "age_month"
         ],
     }
@@ -322,13 +323,13 @@ def get_dashboard_summary_handler():
 
     # 4. Get Recommendations (Prioritize current meal type based on time)
     now_hour = now_wib.hour # Uses the WIB time calculated above
-    current_meal_type = "BREAKFAST"
+    current_meal_type = MealType.BREAKFAST
     if 10 <= now_hour < 15:
-        current_meal_type = "LUNCH"
+        current_meal_type = MealType.LUNCH
     elif 15 <= now_hour < 21:
-        current_meal_type = "DINNER"
+        current_meal_type = MealType.DINNER
     elif 21 <= now_hour or now_hour < 4:
-        current_meal_type = "DINNER" # Still dinner for late night
+        current_meal_type = MealType.DINNER # Still dinner for late night
 
     menus = FoodMenu.query.filter_by(is_active=True).all()
     menu_ids = [m.id for m in menus]

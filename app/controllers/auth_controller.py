@@ -4,6 +4,7 @@ from app.models.user import User
 from app.models.preference import UserPreference
 from app.utils.auth import create_token, check_password_hash, hash_password
 from app.utils.http import ok, error, json_body
+from app.utils.enums import UserRole
 
 def check_user_preferences_status(user_id):
     """Check if user has completed preferences setup"""
@@ -14,15 +15,18 @@ def check_user_preferences_status(user_id):
     # Check if required fields are filled based on role
     role = (preference.role or "").upper()
     ROLE_REQUIREMENTS = {
-        "IBU_HAMIL": [
+        UserRole.IBU_HAMIL: [
             "weight_kg", "height_cm", "age_year",
             "hpht", "lila_cm"
         ],
-        "IBU_MENYUSUI": [
+        UserRole.IBU_MENYUSUI: [
             "weight_kg", "height_cm", "age_year", "lactation_phase"
         ],
-        "ANAK_BALITA": [
+        UserRole.ANAK_BALITA: [
             "weight_kg", "height_cm", "age_year"
+        ],
+        UserRole.ANAK_BATITA: [
+            "weight_kg", "height_cm", "age_year", "age_month"
         ],
     }
     

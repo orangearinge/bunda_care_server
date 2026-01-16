@@ -9,6 +9,7 @@ from datetime import date
 from flask import request
 
 from app.models.preference import UserPreference
+from app.utils.enums import UserRole
 from app.services.food_constants import (
     CALORIES_PER_GRAM_CARBS,
     CALORIES_PER_GRAM_FAT,
@@ -107,7 +108,7 @@ def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
     bmi = (weight / (height_m * height_m)) if height_m > 0 else None
     
     # Get base values and calibrate
-    if role == "ANAK_BATITA":
+    if role == UserRole.ANAK_BATITA:
         raw_base = get_child_base_akg(preference.age_year, preference.age_month)
         base = get_calibrated_base(preference, raw_base, is_child=True)
     else:
@@ -120,13 +121,13 @@ def calculate_nutritional_targets(preference: UserPreference) -> Dict[str, Any]:
     carbs_g = base["carbs"]
     
     # Role-specific increments (pregnant/lactating)
-    if role == "IBU_HAMIL":
+    if role == UserRole.IBU_HAMIL:
         targets = calculate_pregnant_targets(preference, base)
         calorie_target = targets["energy"]
         protein_g = targets["protein"]
         fat_g = targets["fat"]
         carbs_g = targets["carbs"]
-    elif role == "IBU_MENYUSUI":
+    elif role == UserRole.IBU_MENYUSUI:
         targets = calculate_lactating_targets(preference, base)
         calorie_target = targets["energy"]
         protein_g = targets["protein"]

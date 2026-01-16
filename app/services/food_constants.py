@@ -1,13 +1,7 @@
-"""
-Food Service Constants
-
-Contains all constants and configuration values used in food-related services.
-"""
-
-
+from app.utils.enums import MealType
 
 # Valid meal types
-MEAL_TYPES = ["BREAKFAST", "LUNCH", "DINNER"]
+MEAL_TYPES = [m.value for m in MealType]
 
 # Nutrition calculation constants
 CALORIES_PER_GRAM_CARBS = 4.0
