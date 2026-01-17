@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Mengambil URL dari environment variable atau menggunakan default
-GRADIO_API_URL = os.getenv("GRADIO_API_URL", "boyblanco/indobert-feedback")
+GRADIO_API_URL = os.getenv("GRADIO_API_URL")
 
 def classify_feedback(text: str) -> Optional[str]:
     """
@@ -41,13 +41,20 @@ def classify_feedback(text: str) -> Optional[str]:
         # Kita asumsikan ini mengembalikan label string langsung atau list yang berisi label.
         # Kita lakukan sedikit normalisasi.
         
-        if isinstance(result, list):
-            # Jika returns list, ambil elemen pertama
-            return str(result[0])
-        elif isinstance(result, dict):
-            # Jika returns dict, coba cari label (ini tebakan safe handling)
+        if isinstance(result, dict):
+            # Extract from structured dict as shown in user output
+            prediction = result.get('prediction', '').lower()
+            if prediction == 'positive':
+                return "Positif"
+            elif prediction == 'negative':
+                return "Negatif"
             return str(result.get('label', result))
+        elif isinstance(result, list):
+            return str(result[0])
         else:
+            label = str(result).lower()
+            if label == 'positive': return "Positif"
+            if label == 'negat  ive': return "Negatif"
             return str(result)
             
     except Exception as e:
