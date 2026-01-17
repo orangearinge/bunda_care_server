@@ -131,7 +131,7 @@ class RAGService:
         
         return "\n---\n".join(top_chunks)
     
-    def generate_answer(self, query, context):
+    def generate_answer(self, query, context, user_context=None):
         """Menghasilkan jawaban yang akurat dan informatif menggunakan Gemini."""
         if not self.client:
             return "Konfigurasi AI belum lengkap. Silakan periksa GEMINI_API_KEY di pengaturan."
@@ -151,7 +151,8 @@ class RAGService:
             "7. Pastikan kalimat terakhir selesai dengan tanda titik dan merupakan penutup yang baik.\n"
             "8. TUNTASKAN JAWABAN: Pastikan pesan tidak berhenti di tengah kalimat. Selesaikan seluruh penjelasan sampai benar-benar selesai dengan penutup yang sopan.\n"
             "9. JANGAN TERPOTONG: Jika jawaban dirasa akan terlalu panjang, ringkaslah penjelasan agar tetap masuk dalam satu respon utuh yang tuntas.\n"
-            "10. Selalu ingatkan untuk konsultasi dengan tenaga kesehatan untuk keputusan medis.\n\n"
+            "10. Selalu ingatkan untuk konsultasi dengan tenaga kesehatan untuk keputusan medis.\n"
+            "11. PROFIL PENGGUNA: Jika tersedia di bawah, gunakan informasi PROFIL PENGGUNA untuk menyesuaikan jawaban agar lebih personal bagi Bunda/Ayah.\n\n"
             "LARANGAN:\n"
             "- JANGAN menyertakan karakter sampah seperti `]`, `“`, atau header yang rusak.\n"
             "- JANGAN mengarang fakta di luar KONTEKS.\n"
@@ -160,6 +161,8 @@ class RAGService:
         
         full_prompt = (
             f"{system_prompt}\n\n"
+            f"PROFIL PENGGUNA (Gunakan untuk jawaban personal jika relevan):\n"
+            f"{user_context if user_context else 'Data profil tidak tersedia.'}\n\n"
             f"KONTEKS DARI DATABASE BUNDA CARE:\n"
             f"{context}\n\n"
             f"PERTANYAAN BUNDA: {query}\n\n"
@@ -202,7 +205,7 @@ class RAGService:
                 "Tim kami telah mencatat masalah ini. Silakan coba lagi dalam beberapa saat."
             )
 
-    def chat(self, query):
+    def chat(self, query, user_context=None):
         """
         Entry point utama untuk RAG chat.
         """
@@ -210,4 +213,4 @@ class RAGService:
             return "Maaf Bunda, pertanyaan terlalu pendek. Silakan jelaskan pertanyaan Bunda dengan lebih detail."
         
         context = self.rag_search(query)
-        return self.generate_answer(query, context)
+        return self.generate_answer(query, context, user_context)
