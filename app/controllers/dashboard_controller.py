@@ -6,6 +6,7 @@ from app.models.menu import FoodMenu
 from app.models.ingredient import FoodIngredient
 from app.models.article import Article
 from app.utils.http import ok, arg_int
+from app.models.feedback import Feedback
 
 def get_stats_handler():
     total_users = User.query.count()
@@ -15,6 +16,36 @@ def get_stats_handler():
     
     day_ago = datetime.utcnow() - timedelta(days=1)
     active_users_today = User.query.filter(User.created_at >= day_ago).count()
+
+    # Calculate Sentiment Distribution
+    sentiment_data = db.session.query(
+        Feedback.classification, 
+        func.count(Feedback.id)
+    ).group_by(Feedback.classification).all()
+
+    positive_count = 0
+    negative_count = 0
+    neutral_count = 0
+
+    for classification, count in sentiment_data:
+        if not classification:
+            continue
+        
+        c = classification.lower()
+        if 'positif' in c or 'positive' in c:
+            positive_count += count
+        elif 'negatif' in c or 'negative' in c:
+            negative_count += count
+        else:
+            neutral_count += count
+
+    sentiment_distribution = [
+        {"name": "Positif", "value": positive_count, "fill": "var(--color-positif)"},
+        {"name": "Negatif", "value": negative_count, "fill": "var(--color-negatif)"},
+        {"name": "Lainnya", "value": neutral_count, "fill": "var(--color-lainnya)"},
+    ]
+    # Filter out zero values
+    sentiment_distribution = [item for item in sentiment_distribution if item["value"] > 0]
     
     return ok({
         "total_users": total_users,
@@ -26,7 +57,8 @@ def get_stats_handler():
         "total_articles": total_articles,
         "articles_change": 0,
         "active_users_today": active_users_today,
-        "active_users_change": 0
+        "active_users_change": 0,
+        "sentiment_distribution": sentiment_distribution
     })
 
 def get_user_growth_handler():

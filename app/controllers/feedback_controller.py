@@ -25,7 +25,6 @@ def admin_list_feedbacks_handler():
         ))
     
     if classification and classification != "ALL":
-        print(f"DEBUG: Filtering by classification: {classification}")
         if classification == "POSITIF":
             query = query.filter(or_(
                 Feedback.classification.ilike("%positif%"),
@@ -38,8 +37,6 @@ def admin_list_feedbacks_handler():
             ))
         else:
             query = query.filter(Feedback.classification.ilike(f"%{classification}%"))
-    
-    print(f"DEBUG: Final Query: {query}")
     pagination = query.order_by(Feedback.created_at.desc()).paginate(page=page, per_page=limit, error_out=False)
     
     result = []
@@ -56,10 +53,14 @@ def admin_list_feedbacks_handler():
         
     return ok({
         "items": result,
-        "total": pagination.total,
-        "page": page,
-        "limit": limit,
-        "pages": pagination.pages
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": pagination.total,
+            "total_pages": pagination.pages,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev
+        }
     })
 
 def create_feedback_handler():
@@ -85,10 +86,20 @@ def get_my_feedbacks_handler():
     if not user_id:
         return error("UNAUTHORIZED", "User must be logged in", 401)
         
-    feedbacks = get_user_feedbacks(user_id)
+    page = arg_int("page", 1, min_value=1)
+    limit = arg_int("limit", 10, min_value=1, max_value=100)
+    search = (request.args.get("search") or "").strip()
+
+    query = Feedback.query.filter_by(user_id=user_id)
+
+    if search:
+        term = f"%{search}%"
+        query = query.filter(Feedback.comment.ilike(term))
+
+    pagination = query.order_by(Feedback.created_at.desc()).paginate(page=page, per_page=limit, error_out=False)
     
     result = []
-    for f in feedbacks:
+    for f in pagination.items:
         result.append({
             "id": f.id,
             "rating": f.rating,
@@ -96,4 +107,14 @@ def get_my_feedbacks_handler():
             "created_at": f.created_at.isoformat()
         })
         
-    return ok(result)
+    return ok({
+        "items": result,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": pagination.total,
+            "total_pages": pagination.pages,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev
+        }
+    })
