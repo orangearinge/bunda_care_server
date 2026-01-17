@@ -1,15 +1,27 @@
 from app.extensions import db
 from app.models.feedback import Feedback
+from app.services.ai_feedback_service import classify_feedback
 
 def create_feedback(user_id, rating, comment):
     """
     Creates a new user feedback entry in the database.
+    Automatically classifies the feedback content using AI.
     """
+    # Lakukan klasifikasi AI
+    classification_result = None
+    if comment:
+        # Kita panggil service AI. Ini sinkronus (blocking).
+        # Jika butuh performa tinggi, sebaiknya gunakan background task (Celery/RQ).
+        # Untuk saat ini kita buat simpel sesuai request.
+        classification_result = classify_feedback(comment)
+
     new_feedback = Feedback(
         user_id=user_id,
         rating=rating,
-        comment=comment
+        comment=comment,
+        classification=classification_result
     )
+    
     db.session.add(new_feedback)
     db.session.commit()
     return new_feedback

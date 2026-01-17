@@ -1,7 +1,24 @@
 from flask import request
 from app.utils.http import ok, error, json_body, validate_schema
 from app.schemas.feedback_schema import FeedbackSchema
-from app.services.feedback_service import create_feedback, get_user_feedbacks
+from app.services.feedback_service import create_feedback, get_user_feedbacks, get_all_feedbacks
+
+def admin_list_feedbacks_handler():
+    feedbacks = get_all_feedbacks()
+    
+    result = []
+    for f in feedbacks:
+        result.append({
+            "id": f.id,
+            "user_id": f.user_id,
+            "rating": f.rating,
+            "comment": f.comment,
+            "classification": f.classification,
+            "created_at": f.created_at.isoformat(),
+            "user_name": f.user.full_name if f.user else "Unknown"
+        })
+        
+    return ok(result)
 
 def create_feedback_handler():
     user_id = getattr(request, 'user_id', None)

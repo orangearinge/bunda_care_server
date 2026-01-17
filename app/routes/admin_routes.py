@@ -23,6 +23,13 @@ def get_user(id):
 def update_user_role(id):
     return update_user_role_handler(id)
 
+from app.controllers.feedback_controller import admin_list_feedbacks_handler
+
+@admin_bp.get("/feedbacks")
+@require_admin
+def list_feedbacks():
+    return admin_list_feedbacks_handler()
+
 from app.controllers.dashboard_controller import get_stats_handler, get_user_growth_handler
 
 @admin_bp.get("/dashboard/stats")
