@@ -82,10 +82,6 @@ def upsert_preference_handler():
             user.role_id = role_obj.id
 
     # --- STEP 5: FINAL SCHEMA VALIDATION FOR ROLE REQUIREMENTS ---
-    # Re-validate fully if it's not partial anymore or just to be sure
-    # Since we did partial=True above, we should check if the resulting pref is valid
-    # But our schema validates_schema already ran during validate_schema call.
-    # If we need to ensure the final state is valid:
     full_data = {
         "role": pref.role,
         "height_cm": pref.height_cm,
@@ -96,6 +92,7 @@ def upsert_preference_handler():
         "lila_cm": pref.lila_cm,
         "lactation_phase": pref.lactation_phase
     }
+    
     _, errors = validate_schema(UserPreferenceSchema, full_data)
     if errors:
         return error("VALIDATION_ERROR", "Incomplete preference data for selected role", 400, details=errors)

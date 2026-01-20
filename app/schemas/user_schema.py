@@ -4,11 +4,11 @@ from app.utils.enums import UserRole, LactationPhase
 class UserPreferenceSchema(Schema):
     name = fields.Str(allow_none=True)
     role = fields.Str(validate=validate.OneOf([e.value for e in UserRole]))
-    height_cm = fields.Int(validate=validate.Range(min=50, max=300))
-    weight_kg = fields.Float(validate=validate.Range(min=1, max=500))
-    age_year = fields.Int(validate=validate.Range(min=0, max=120))
-    age_month = fields.Int(validate=validate.Range(min=0, max=11))
-    lila_cm = fields.Float(validate=validate.Range(min=0, max=100))
+    height_cm = fields.Int(validate=validate.Range(min=50, max=300), allow_none=True)
+    weight_kg = fields.Float(validate=validate.Range(min=1, max=500), allow_none=True)
+    age_year = fields.Int(validate=validate.Range(min=0, max=120), allow_none=True)
+    age_month = fields.Int(validate=validate.Range(min=0, max=11), allow_none=True)
+    lila_cm = fields.Float(validate=validate.Range(min=0, max=100), allow_none=True)
     hpht = fields.Date(allow_none=True)
     lactation_phase = fields.Str(validate=validate.OneOf([e.value for e in LactationPhase]), allow_none=True)
     food_prohibitions = fields.List(fields.Str(), load_default=[])
@@ -32,7 +32,7 @@ class UserPreferenceSchema(Schema):
             missing = [field for field in requirements[role] if data.get(field) is None]
             if missing:
                 raise ValidationError(
-                    {field: ["Field is required for this role"] for field in missing}
+                    {field: [f"Field {field} is required for role {role}"] for field in missing}
                 )
 
 class UserProfileUpdateSchema(Schema):
