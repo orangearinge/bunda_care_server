@@ -53,23 +53,40 @@ def create_meal_log(
     ingredient_map = {ing.id: ing for ing in FoodIngredient.query.all()}
     
     # Calculate totals
-    total = {"calories": 0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+    if menu.nutrition_is_manual and menu.manual_calories is not None:
+        # GOLDEN OVERRIDE
+        total = {
+            "calories": int(menu.manual_calories),
+            "protein_g": float(menu.manual_protein_g or 0),
+            "carbs_g": float(menu.manual_carbs_g or 0),
+            "fat_g": float(menu.manual_fat_g or 0),
+        }
+    else:
+        total = {"calories": 0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+    
     items_payload = []
     
     for composition in compositions:
         ingredient = ingredient_map.get(composition.ingredient_id)
-        if not ingredient:
-            continue
         
-        quantity = float(composition.quantity_g) * float(servings)
-        nutrition = serialize_nutrition(ingredient, quantity)
+        # Build payload even if we don't use it for totals (for history detail)
+        # Handle manual text ingredients (ingredient=None)
+        qty = float(composition.quantity_g or 0) * float(servings)
         
-        total["calories"] += nutrition["calories"]
-        total["protein_g"] += nutrition["protein_g"]
-        total["carbs_g"] += nutrition["carbs_g"]
-        total["fat_g"] += nutrition["fat_g"]
-        
-        items_payload.append((ingredient.id, quantity, nutrition))
+        if ingredient:
+            nutrition = serialize_nutrition(ingredient, qty)
+            # Only add to total if NOT using manual override
+            if not (menu.nutrition_is_manual and menu.manual_calories is not None):
+                total["calories"] += nutrition["calories"]
+                total["protein_g"] += nutrition["protein_g"]
+                total["carbs_g"] += nutrition["carbs_g"]
+                total["fat_g"] += nutrition["fat_g"]
+            
+            items_payload.append((ingredient.id, qty, nutrition))
+        else:
+            # Manual text ingredient - no nutrition calculation possible without ID
+            # It already has 0 nutrition by default in some systems, or we just log it with 0
+            pass
     
     # Create meal log
     if logged_at is None:

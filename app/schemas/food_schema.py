@@ -2,8 +2,9 @@ from marshmallow import Schema, fields, validate
 from app.utils.enums import MealType, TargetRole
 
 class IngredientSchema(Schema):
-    ingredient_id = fields.Int(required=True)
-    quantity_g = fields.Float(required=True, validate=validate.Range(min=0))
+    ingredient_id = fields.Int(allow_none=True)
+    quantity_g = fields.Float(allow_none=True, validate=validate.Range(min=0))  # Now optional
+    display_text = fields.Str(allow_none=True)  # Standardized name
 
 class CreateMenuSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=1))
@@ -13,9 +14,17 @@ class CreateMenuSchema(Schema):
     description = fields.Str(allow_none=True)
     cooking_instructions = fields.Str(allow_none=True)
     cooking_time_minutes = fields.Int(allow_none=True)
-    target_role = fields.Str(load_default=TargetRole.ALL.value, validate=validate.OneOf([e.value for e in TargetRole]))
+    target_role = fields.Str(load_default=TargetRole.IBU.value, validate=validate.OneOf([e.value for e in TargetRole]))
     is_active = fields.Bool(load_default=True)
     ingredients = fields.List(fields.Nested(IngredientSchema), load_default=[])
+    
+    # Manual Nutrition Override fields
+    nutrition_is_manual = fields.Bool(load_default=False)
+    serving_unit = fields.Str(allow_none=True)
+    manual_calories = fields.Int(allow_none=True, validate=validate.Range(min=0))
+    manual_protein_g = fields.Float(allow_none=True, validate=validate.Range(min=0))
+    manual_carbs_g = fields.Float(allow_none=True, validate=validate.Range(min=0))
+    manual_fat_g = fields.Float(allow_none=True, validate=validate.Range(min=0))
 
 class UpdateMenuSchema(Schema):
     name = fields.Str(validate=validate.Length(min=1))
@@ -28,6 +37,14 @@ class UpdateMenuSchema(Schema):
     target_role = fields.Str(validate=validate.OneOf([e.value for e in TargetRole]))
     is_active = fields.Bool()
     ingredients = fields.List(fields.Nested(IngredientSchema))
+    
+    # Manual Nutrition Override fields
+    nutrition_is_manual = fields.Bool()
+    serving_unit = fields.Str(allow_none=True)
+    manual_calories = fields.Int(allow_none=True, validate=validate.Range(min=0))
+    manual_protein_g = fields.Float(allow_none=True, validate=validate.Range(min=0))
+    manual_carbs_g = fields.Float(allow_none=True, validate=validate.Range(min=0))
+    manual_fat_g = fields.Float(allow_none=True, validate=validate.Range(min=0))
 
 class CreateMealLogSchema(Schema):
     menu_id = fields.Int(required=True)
