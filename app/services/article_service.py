@@ -231,6 +231,7 @@ def list_articles(
     page: int = 1,
     limit: int = 10,
     status: Optional[str] = None,
+    search: Optional[str] = None,
     sort_by: str = "created_at",
     sort_order: str = "desc"
 ) -> Dict[str, Any]:
@@ -255,6 +256,16 @@ def list_articles(
         if status not in ["draft", "published"]:
             raise ValueError("Status must be 'draft' or 'published'")
         query = query.filter_by(status=status)
+    
+    # Filter by search term if provided
+    if search:
+        search_term = f"%{search.strip()}%"
+        query = query.filter(
+            db.or_(
+                Article.title.ilike(search_term),
+                Article.excerpt.ilike(search_term)
+            )
+        )
     
     # Sorting
     sort_field = getattr(Article, sort_by, Article.created_at)
@@ -282,6 +293,7 @@ def list_articles(
 def list_public_articles(
     page: int = 1,
     limit: int = 10,
+    search: Optional[str] = None,
     sort_by: str = "published_at",
     sort_order: str = "desc"
 ) -> Dict[str, Any]:
@@ -299,6 +311,16 @@ def list_public_articles(
     """
     # Only show published articles
     query = Article.query.filter_by(status="published", is_deleted=False)
+
+    # Filter by search term if provided
+    if search:
+        search_term = f"%{search.strip()}%"
+        query = query.filter(
+            db.or_(
+                Article.title.ilike(search_term),
+                Article.excerpt.ilike(search_term)
+            )
+        )
     
     # Sorting
     sort_field = getattr(Article, sort_by, Article.published_at)

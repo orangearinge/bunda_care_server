@@ -144,6 +144,7 @@ def list_articles_handler():
     page = arg_int("page", 1, min_value=1)
     limit = arg_int("limit", 10, min_value=1, max_value=100)
     status = (request.args.get("status") or "").strip() or None
+    search = (request.args.get("search") or "").strip() or None
     sort_by = (request.args.get("sort_by") or "created_at").strip()
     sort_order = (request.args.get("sort_order") or "desc").strip()
     
@@ -152,6 +153,7 @@ def list_articles_handler():
             page=page,
             limit=limit,
             status=status,
+            search=search,
             sort_by=sort_by,
             sort_order=sort_order
         )
@@ -179,6 +181,7 @@ def list_public_articles_handler():
     """
     page = arg_int("page", 1, min_value=1)
     limit = arg_int("limit", 10, min_value=1, max_value=50)
+    search = (request.args.get("search") or "").strip() or None
     sort_by = (request.args.get("sort_by") or "published_at").strip()
     sort_order = (request.args.get("sort_order") or "desc").strip()
     
@@ -186,6 +189,7 @@ def list_public_articles_handler():
         result = list_public_articles(
             page=page,
             limit=limit,
+            search=search,
             sort_by=sort_by,
             sort_order=sort_order
         )
