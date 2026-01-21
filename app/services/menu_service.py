@@ -199,6 +199,9 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
                 nutrition["protein_g"] += float(ingredient.protein_g) * ratio
                 nutrition["carbs_g"] += float(ingredient.carbs_g) * ratio
                 nutrition["fat_g"] += float(ingredient.fat_g) * ratio
+        
+        # Ensure calories is int
+        nutrition["calories"] = int(nutrition["calories"])
     
     # Build ingredients list
     ingredients_list = []

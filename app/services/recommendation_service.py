@@ -89,25 +89,41 @@ def calculate_menu_nutrition(
     Returns:
         Tuple of (total nutrition dict, list of ingredient details)
     """
-    total = {"calories": 0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+    # GOLDEN OVERRIDE LOGIC
+    if menu.nutrition_is_manual and menu.manual_calories is not None:
+        total = {
+            "calories": int(menu.manual_calories),
+            "protein_g": float(menu.manual_protein_g or 0),
+            "carbs_g": float(menu.manual_carbs_g or 0),
+            "fat_g": float(menu.manual_fat_g or 0),
+        }
+    else:
+        total = {"calories": 0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+    
     ingredients = []
     
     for composition in composition_by_menu.get(menu.id, []):
         ingredient = ingredient_map.get(composition.ingredient_id)
-        if not ingredient:
-            continue
         
-        quantity = float(composition.quantity_g)
-        nutrition = serialize_nutrition(ingredient, quantity)
+        # Build ingredient details for the response regardless of calculation method
+        qty = float(composition.quantity_g) if composition.quantity_g is not None else 0
         
-        for key in ("calories", "protein_g", "carbs_g", "fat_g"):
-            total[key] += nutrition[key]
-        
-        ingredients.append({
-            "ingredient_id": ingredient.id,
-            "name": ingredient.name,
-            "quantity_g": quantity
-        })
+        ing_data = {
+            "ingredient_id": composition.ingredient_id,
+            "name": ingredient.name if ingredient else "",
+            "quantity_g": qty,
+            "display_text": composition.display_quantity
+        }
+        ingredients.append(ing_data)
+
+        # Only add to total if NOT using manual override and ingredient/quantity exists
+        if not menu.nutrition_is_manual or menu.manual_calories is None:
+            if ingredient and composition.quantity_g is not None:
+                nutrition = serialize_nutrition(ingredient, qty)
+                total["calories"] += int(nutrition["calories"]) # Ensure int
+                total["protein_g"] += nutrition["protein_g"]
+                total["carbs_g"] += nutrition["carbs_g"]
+                total["fat_g"] += nutrition["fat_g"]
     
     return total, ingredients
 
@@ -300,7 +316,7 @@ def generate_meal_recommendations(
                 # Count hits
                 hits = sum(
                     1 for ing in ingredients 
-                    if int(ing.get("ingredient_id")) in detected_ids
+                    if ing.get("ingredient_id") is not None and int(ing.get("ingredient_id")) in detected_ids
                 )
                 
                 # Skip if doesn't meet minimum hits
