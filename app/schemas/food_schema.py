@@ -2,9 +2,9 @@ from marshmallow import Schema, fields, validate
 from app.utils.enums import MealType, TargetRole
 
 class IngredientSchema(Schema):
-    ingredient_id = fields.Int(required=True)
+    ingredient_id = fields.Int(allow_none=True)
     quantity_g = fields.Float(allow_none=True, validate=validate.Range(min=0))  # Now optional
-    display_quantity = fields.Str(allow_none=True)  # e.g., "3 lembar", "Secukupnya"
+    display_text = fields.Str(allow_none=True)  # Standardized name
 
 class CreateMenuSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=1))

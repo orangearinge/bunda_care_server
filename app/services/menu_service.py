@@ -104,13 +104,20 @@ def list_menus(
         if menu_ingredient.menu_id not in ingredients_by_menu:
             ingredients_by_menu[menu_ingredient.menu_id] = []
         
-        ingredient = ingredient_map.get(menu_ingredient.ingredient_id)
-        if ingredient:
-            ingredients_by_menu[menu_ingredient.menu_id].append({
-                "ingredient_id": ingredient.id,
-                "name": ingredient.name,
-                "quantity_g": float(menu_ingredient.quantity_g)
-            })
+        ingredient = ingredient_map.get(menu_ingredient.ingredient_id) if menu_ingredient.ingredient_id else None
+        
+        qty = float(menu_ingredient.quantity_g) if menu_ingredient.quantity_g is not None else None
+        ingredient_data = {
+            "ingredient_id": menu_ingredient.ingredient_id,
+            "name": ingredient.name if ingredient else "",
+            "quantity": qty,
+            "quantity_g": qty,
+            "unit": "gram"
+        }
+        if menu_ingredient.display_quantity:
+            ingredient_data["display_text"] = menu_ingredient.display_quantity
+        
+        ingredients_by_menu[menu_ingredient.menu_id].append(ingredient_data)
     
     # Build response
     data = []
@@ -128,6 +135,10 @@ def list_menus(
             "is_active": menu.is_active,
             "serving_unit": menu.serving_unit or "Porsi",
             "nutrition_is_manual": menu.nutrition_is_manual or False,
+            "manual_calories": menu.manual_calories,
+            "manual_protein_g": float(menu.manual_protein_g) if menu.manual_protein_g else None,
+            "manual_carbs_g": float(menu.manual_carbs_g) if menu.manual_carbs_g else None,
+            "manual_fat_g": float(menu.manual_fat_g) if menu.manual_fat_g else None,
             "ingredients": ingredients_by_menu.get(menu.id, [])
         })
     
@@ -192,23 +203,25 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
     # Build ingredients list
     ingredients_list = []
     for menu_ingredient in menu_ingredients:
-        ingredient = FoodIngredient.query.get(menu_ingredient.ingredient_id)
-        if ingredient:
-            qty = float(menu_ingredient.quantity_g) if menu_ingredient.quantity_g else 0
-            
-            ingredient_data = {
-                "ingredient_id": ingredient.id,
-                "name": ingredient.name,
-                "quantity": qty,
-                "quantity_g": qty,
-                "unit": "gram"
-            }
-            
-            # Add display_quantity if available (for flexible text like "3 lembar")
-            if menu_ingredient.display_quantity:
-                ingredient_data["display_text"] = menu_ingredient.display_quantity
-            
-            ingredients_list.append(ingredient_data)
+        ingredient = None
+        if menu_ingredient.ingredient_id:
+            ingredient = FoodIngredient.query.get(menu_ingredient.ingredient_id)
+        
+        qty = float(menu_ingredient.quantity_g) if menu_ingredient.quantity_g is not None else None
+        
+        ingredient_data = {
+            "ingredient_id": menu_ingredient.ingredient_id,
+            "name": ingredient.name if ingredient else "",
+            "quantity": qty,
+            "quantity_g": qty,
+            "unit": "gram"
+        }
+        
+        # Add display_quantity if available (for flexible text like "3 lembar")
+        if menu_ingredient.display_quantity:
+            ingredient_data["display_text"] = menu_ingredient.display_quantity
+        
+        ingredients_list.append(ingredient_data)
     
     return {
         "id": menu.id,
@@ -225,6 +238,10 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
         "is_active": menu.is_active,
         "serving_unit": menu.serving_unit or "Porsi",  # Default to "Porsi"
         "nutrition_is_manual": menu.nutrition_is_manual or False,
+        "manual_calories": menu.manual_calories,
+        "manual_protein_g": float(menu.manual_protein_g) if menu.manual_protein_g is not None else None,
+        "manual_carbs_g": float(menu.manual_carbs_g) if menu.manual_carbs_g is not None else None,
+        "manual_fat_g": float(menu.manual_fat_g) if menu.manual_fat_g is not None else None,
         "nutrition": nutrition,
         "ingredients": ingredients_list
     }
@@ -310,14 +327,14 @@ def create_menu(
     for item in ingredients:
         ingredient_id = item.get("ingredient_id")
         quantity_g = item.get("quantity_g")
-        display_quantity = item.get("display_quantity")
+        display_text = item.get("display_text")
         
-        if ingredient_id:
+        if ingredient_id or display_text:
             db.session.add(FoodMenuIngredient(
                 menu_id=menu.id,
                 ingredient_id=ingredient_id,
                 quantity_g=quantity_g,
-                display_quantity=display_quantity
+                display_quantity=display_text
             ))
     
     db.session.commit()
@@ -419,14 +436,14 @@ def update_menu(
         for item in ingredients:
             ingredient_id = item.get("ingredient_id")
             quantity_g = item.get("quantity_g")
-            display_quantity = item.get("display_quantity")
+            display_text = item.get("display_text")
             
-            if ingredient_id:
+            if ingredient_id or display_text:
                 db.session.add(FoodMenuIngredient(
                     menu_id=menu.id,
                     ingredient_id=ingredient_id,
                     quantity_g=quantity_g,
-                    display_quantity=display_quantity
+                    display_quantity=display_text
                 ))
     
     db.session.commit()

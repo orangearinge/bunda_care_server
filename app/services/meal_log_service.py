@@ -61,7 +61,8 @@ def create_meal_log(
         if not ingredient:
             continue
         
-        quantity = float(composition.quantity_g) * float(servings)
+        # Use 0 as fallback if quantity_g is null (e.g. for display-only ingredients)
+        quantity = float(composition.quantity_g or 0) * float(servings)
         nutrition = serialize_nutrition(ingredient, quantity)
         
         total["calories"] += nutrition["calories"]
