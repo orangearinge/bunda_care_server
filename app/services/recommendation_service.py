@@ -277,30 +277,23 @@ def generate_meal_recommendations(
                 elif 12 <= total_months: # Covers 12-23m and older toddlers (2-3y)
                     user_role_cat = TargetRole.ANAK_12_23
                 else:
-                    user_role_cat = TargetRole.ANAK # Fallback
+                    user_role_cat = TargetRole.ANAK_6_8 # Default to smallest age range or handle as no match
 
-            menu_target = (menu.target_role or TargetRole.ALL).upper()
+            menu_target = (menu.target_role or TargetRole.IBU).upper()
             
             # Match Logic:
-            # 1. "ALL" matches everyone
-            # 2. "ANAK" matches any child age
-            # 3. Specific "ANAK_X_Y" matches only that age range
-            # 4. "IBU" matches non-children
+            # 1. Specific "ANAK_X_Y" matches only that age range
+            # 2. "IBU" matches mothers
             
-            if menu_target == TargetRole.ALL:
-                pass # Always allow
-            elif preference.role == UserRole.ANAK_BATITA:
+            if preference.role == UserRole.ANAK_BATITA:
                 if menu_target == TargetRole.IBU:
                     continue # Child can't eat adult food
-                if menu_target.startswith("ANAK_") and menu_target != user_role_cat:
-                    continue # Wrong age range
+                if menu_target != user_role_cat:
+                    continue # Wrong age range for children
             else:
                 # User is IBU
-                if menu_target.startswith("ANAK"):
-                    continue # Ibu doesn't usually get recommended baby food
                 if menu_target != TargetRole.IBU:
-                    # This covers specific ANAK tags if any leaked
-                    continue
+                    continue # Mothers don't usually get recommended baby food (ANAK_X_Y)
             
             
             # Calculate nutrition

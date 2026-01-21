@@ -14,7 +14,7 @@ class CreateMenuSchema(Schema):
     description = fields.Str(allow_none=True)
     cooking_instructions = fields.Str(allow_none=True)
     cooking_time_minutes = fields.Int(allow_none=True)
-    target_role = fields.Str(load_default=TargetRole.ALL.value, validate=validate.OneOf([e.value for e in TargetRole]))
+    target_role = fields.Str(load_default=TargetRole.IBU.value, validate=validate.OneOf([e.value for e in TargetRole]))
     is_active = fields.Bool(load_default=True)
     ingredients = fields.List(fields.Nested(IngredientSchema), load_default=[])
     

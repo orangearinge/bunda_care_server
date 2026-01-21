@@ -58,25 +58,8 @@ def list_menus(
 
     if target_role:
         target_role = target_role.upper()
-        if target_role.startswith(TargetRole.ANAK + "_"):
-            # If searching for specific child age, also show generic "ANAK" and "ALL"
-            query = query.filter(db.or_(
-                FoodMenu.target_role == target_role,
-                FoodMenu.target_role == TargetRole.ANAK,
-                FoodMenu.target_role == TargetRole.ALL
-            ))
-        elif target_role == TargetRole.ANAK:
-            # If searching for generic child, show all child specific ones and "ALL"
-            query = query.filter(db.or_(
-                FoodMenu.target_role.like(f"{TargetRole.ANAK}%"),
-                FoodMenu.target_role == TargetRole.ALL
-            ))
-        else:
-            # For IBU or specific roles, show that and "ALL"
-            query = query.filter(db.or_(
-                FoodMenu.target_role == target_role,
-                FoodMenu.target_role == TargetRole.ALL
-            ))
+        # Filter by exact role
+        query = query.filter(FoodMenu.target_role == target_role)
         
     # Order by
     query = query.order_by(FoodMenu.meal_type, FoodMenu.name)
@@ -258,7 +241,7 @@ def create_menu(
     description: Optional[str] = None,
     cooking_instructions: Optional[str] = None,
     cooking_time_minutes: Optional[int] = None,
-    target_role: str = TargetRole.ALL,
+    target_role: str = TargetRole.IBU,
     is_active: bool = True,
     ingredients: List[Dict] = None,
     nutrition_is_manual: bool = False,
@@ -312,7 +295,7 @@ def create_menu(
         description=description,
         cooking_instructions=cooking_instructions,
         cooking_time_minutes=cooking_time_minutes,
-        target_role=target_role.upper() if target_role else TargetRole.ALL,
+        target_role=target_role.upper() if target_role else TargetRole.IBU,
         is_active=is_active,
         nutrition_is_manual=nutrition_is_manual,
         serving_unit=serving_unit,

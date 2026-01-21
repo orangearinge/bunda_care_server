@@ -246,7 +246,7 @@ def list_menus_handler():
                     elif 12 <= total_months <= 23:
                         target_role = TargetRole.ANAK_12_23
                     else:
-                        target_role = TargetRole.ANAK
+                        target_role = TargetRole.ANAK_6_8
                 else:
                     target_role = TargetRole.IBU
     
@@ -297,7 +297,7 @@ def create_menu_handler():
             description=data.get("description"),
             cooking_instructions=data.get("cooking_instructions"),
             cooking_time_minutes=data.get("cooking_time_minutes"),
-            target_role=data.get("target_role", TargetRole.ALL),
+            target_role=data.get("target_role", TargetRole.IBU),
             is_active=data.get("is_active", True),
             ingredients=data.get("ingredients", []),
             nutrition_is_manual=data.get("nutrition_is_manual", False),
