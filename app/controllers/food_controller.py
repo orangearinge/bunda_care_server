@@ -272,7 +272,13 @@ def create_menu_handler():
         - meal_type (required): BREAKFAST/LUNCH/DINNER
         - tags (optional): Comma-separated tags
         - is_active (optional): Whether menu is active (default: True)
-        - ingredients (optional): List of {ingredient_id, quantity_g}
+        - ingredients (optional): List of {ingredient_id, quantity_g, display_quantity}
+        - nutrition_is_manual (optional): Use manual nutrition values
+        - serving_unit (optional): Unit of serving (e.g., "Porsi")
+        - manual_calories (optional): Manual calorie value
+        - manual_protein_g (optional): Manual protein value
+        - manual_carbs_g (optional): Manual carbs value
+        - manual_fat_g (optional): Manual fat value
     """
     # Validate input
     data, errors = validate_schema(CreateMenuSchema, json_body())
@@ -293,7 +299,13 @@ def create_menu_handler():
             cooking_time_minutes=data.get("cooking_time_minutes"),
             target_role=data.get("target_role", TargetRole.ALL),
             is_active=data.get("is_active", True),
-            ingredients=data.get("ingredients", [])
+            ingredients=data.get("ingredients", []),
+            nutrition_is_manual=data.get("nutrition_is_manual", False),
+            serving_unit=data.get("serving_unit"),
+            manual_calories=data.get("manual_calories"),
+            manual_protein_g=data.get("manual_protein_g"),
+            manual_carbs_g=data.get("manual_carbs_g"),
+            manual_fat_g=data.get("manual_fat_g")
         )
         print(f"[CREATE MENU] Successfully created menu with ID: {menu_id}")
         return ok({"id": menu_id, "message": "Menu created successfully"}, 201)
@@ -317,7 +329,13 @@ def update_menu_handler(menu_id: int):
         - cooking_time_minutes: Time in minutes
         - target_role: IBU, ANAK, or ALL
         - is_active: Whether menu is active
-        - ingredients: List of {ingredient_id, quantity_g} (replaces all)
+        - ingredients: List of {ingredient_id, quantity_g, display_quantity} (replaces all)
+        - nutrition_is_manual: Use manual nutrition values
+        - serving_unit: Unit of serving
+        - manual_calories: Manual calorie value
+        - manual_protein_g: Manual protein value
+        - manual_carbs_g: Manual carbs value
+        - manual_fat_g: Manual fat value
     """
     # Validate input
     data, errors = validate_schema(UpdateMenuSchema, json_body(), partial=True)
@@ -340,7 +358,13 @@ def update_menu_handler(menu_id: int):
             cooking_time_minutes=data.get("cooking_time_minutes"),
             target_role=data.get("target_role"),
             is_active=data.get("is_active"),
-            ingredients=data.get("ingredients")
+            ingredients=data.get("ingredients"),
+            nutrition_is_manual=data.get("nutrition_is_manual"),
+            serving_unit=data.get("serving_unit"),
+            manual_calories=data.get("manual_calories"),
+            manual_protein_g=data.get("manual_protein_g"),
+            manual_carbs_g=data.get("manual_carbs_g"),
+            manual_fat_g=data.get("manual_fat_g")
         )
         
         if not success:

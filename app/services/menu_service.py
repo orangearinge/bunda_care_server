@@ -126,6 +126,8 @@ def list_menus(
             "cooking_time_minutes": menu.cooking_time_minutes,
             "target_role": menu.target_role,
             "is_active": menu.is_active,
+            "serving_unit": menu.serving_unit or "Porsi",
+            "nutrition_is_manual": menu.nutrition_is_manual or False,
             "ingredients": ingredients_by_menu.get(menu.id, [])
         })
     
@@ -155,36 +157,58 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
     # Get menu ingredients
     menu_ingredients = FoodMenuIngredient.query.filter_by(menu_id=menu_id).all()
 
-    # Calculate nutrition
-    nutrition = {
-        "calories": 0,
-        "protein_g": 0,
-        "carbs_g": 0,
-        "fat_g": 0,
-    }
+    # Calculate nutrition - GOLDEN OVERRIDE LOGIC
+    # If manual nutrition is set, use it. Otherwise calculate from ingredients.
+    if menu.nutrition_is_manual and menu.manual_calories is not None:
+        # Use manual nutrition values (The Golden Override)
+        nutrition = {
+            "calories": int(menu.manual_calories),
+            "protein_g": float(menu.manual_protein_g or 0),
+            "carbs_g": float(menu.manual_carbs_g or 0),
+            "fat_g": float(menu.manual_fat_g or 0),
+        }
+    else:
+        # Calculate from ingredients (Fallback method)
+        nutrition = {
+            "calories": 0,
+            "protein_g": 0,
+            "carbs_g": 0,
+            "fat_g": 0,
+        }
+        
+        for menu_ingredient in menu_ingredients:
+            ingredient = FoodIngredient.query.get(menu_ingredient.ingredient_id)
+            if ingredient and menu_ingredient.quantity_g:
+                qty = float(menu_ingredient.quantity_g)
+                
+                # Nutrition calc (assuming DB values are per 100g)
+                ratio = qty / 100.0
+                
+                nutrition["calories"] += float(ingredient.calories) * ratio
+                nutrition["protein_g"] += float(ingredient.protein_g) * ratio
+                nutrition["carbs_g"] += float(ingredient.carbs_g) * ratio
+                nutrition["fat_g"] += float(ingredient.fat_g) * ratio
     
+    # Build ingredients list
     ingredients_list = []
-    
     for menu_ingredient in menu_ingredients:
         ingredient = FoodIngredient.query.get(menu_ingredient.ingredient_id)
         if ingredient:
-            qty = float(menu_ingredient.quantity_g)
+            qty = float(menu_ingredient.quantity_g) if menu_ingredient.quantity_g else 0
             
-            # Nutrition calc (assuming DB values are per 100g)
-            ratio = qty / 100.0
-            
-            nutrition["calories"] += float(ingredient.calories) * ratio
-            nutrition["protein_g"] += float(ingredient.protein_g) * ratio
-            nutrition["carbs_g"] += float(ingredient.carbs_g) * ratio
-            nutrition["fat_g"] += float(ingredient.fat_g) * ratio
-            
-            ingredients_list.append({
+            ingredient_data = {
                 "ingredient_id": ingredient.id,
                 "name": ingredient.name,
-                "quantity": qty, # Frontend expects 'quantity'
+                "quantity": qty,
                 "quantity_g": qty,
-                "unit": "gram" # Default unit
-            })
+                "unit": "gram"
+            }
+            
+            # Add display_quantity if available (for flexible text like "3 lembar")
+            if menu_ingredient.display_quantity:
+                ingredient_data["display_text"] = menu_ingredient.display_quantity
+            
+            ingredients_list.append(ingredient_data)
     
     return {
         "id": menu.id,
@@ -193,12 +217,14 @@ def get_menu_detail(menu_id: int) -> Optional[Dict[str, Any]]:
         "meal_type": menu.meal_type,
         "tags": menu.tags,
         "image_url": menu.image_url,
-        "categories": [menu.meal_type], # Flutter might expect this or category
-        "category": menu.meal_type,     # Matching Flutter model
+        "categories": [menu.meal_type],
+        "category": menu.meal_type,
         "cooking_instructions": menu.cooking_instructions,
         "cooking_time_minutes": menu.cooking_time_minutes,
         "target_role": menu.target_role,
         "is_active": menu.is_active,
+        "serving_unit": menu.serving_unit or "Porsi",  # Default to "Porsi"
+        "nutrition_is_manual": menu.nutrition_is_manual or False,
         "nutrition": nutrition,
         "ingredients": ingredients_list
     }
@@ -214,7 +240,13 @@ def create_menu(
     cooking_time_minutes: Optional[int] = None,
     target_role: str = TargetRole.ALL,
     is_active: bool = True,
-    ingredients: List[Dict] = None
+    ingredients: List[Dict] = None,
+    nutrition_is_manual: bool = False,
+    serving_unit: Optional[str] = None,
+    manual_calories: Optional[int] = None,
+    manual_protein_g: Optional[float] = None,
+    manual_carbs_g: Optional[float] = None,
+    manual_fat_g: Optional[float] = None
 ) -> int:
     """
     Create a new menu with ingredients.
@@ -229,7 +261,13 @@ def create_menu(
         cooking_time_minutes: Time in minutes
         target_role: IBU, ANAK, or ALL
         is_active: Whether menu is active
-        ingredients: List of {ingredient_id, quantity_g}
+        ingredients: List of {ingredient_id, quantity_g, display_quantity}
+        nutrition_is_manual: Whether to use manual nutrition values
+        serving_unit: Unit of serving (e.g., "Porsi", "Mangkok")
+        manual_calories: Manual calorie value
+        manual_protein_g: Manual protein value
+        manual_carbs_g: Manual carbs value
+        manual_fat_g: Manual fat value
         
     Returns:
         New menu ID
@@ -242,6 +280,7 @@ def create_menu(
     
     print(f"[CREATE_MENU_SERVICE] Creating menu: {name}")
     print(f"[CREATE_MENU_SERVICE] image_url: {image_url}")
+    print(f"[CREATE_MENU_SERVICE] nutrition_is_manual: {nutrition_is_manual}")
     print(f"[CREATE_MENU_SERVICE] ingredients: {ingredients}")
     
     # Create menu
@@ -254,7 +293,13 @@ def create_menu(
         cooking_instructions=cooking_instructions,
         cooking_time_minutes=cooking_time_minutes,
         target_role=target_role.upper() if target_role else TargetRole.ALL,
-        is_active=is_active
+        is_active=is_active,
+        nutrition_is_manual=nutrition_is_manual,
+        serving_unit=serving_unit,
+        manual_calories=manual_calories,
+        manual_protein_g=manual_protein_g,
+        manual_carbs_g=manual_carbs_g,
+        manual_fat_g=manual_fat_g
     )
     db.session.add(menu)
     db.session.flush()
@@ -265,12 +310,14 @@ def create_menu(
     for item in ingredients:
         ingredient_id = item.get("ingredient_id")
         quantity_g = item.get("quantity_g")
+        display_quantity = item.get("display_quantity")
         
-        if ingredient_id and quantity_g:
+        if ingredient_id:
             db.session.add(FoodMenuIngredient(
                 menu_id=menu.id,
                 ingredient_id=ingredient_id,
-                quantity_g=quantity_g
+                quantity_g=quantity_g,
+                display_quantity=display_quantity
             ))
     
     db.session.commit()
@@ -289,7 +336,13 @@ def update_menu(
     cooking_time_minutes: Optional[int] = None,
     target_role: Optional[str] = None,
     is_active: Optional[bool] = None,
-    ingredients: Optional[List[Dict]] = None
+    ingredients: Optional[List[Dict]] = None,
+    nutrition_is_manual: Optional[bool] = None,
+    serving_unit: Optional[str] = None,
+    manual_calories: Optional[int] = None,
+    manual_protein_g: Optional[float] = None,
+    manual_carbs_g: Optional[float] = None,
+    manual_fat_g: Optional[float] = None
 ) -> bool:
     """
     Update an existing menu.
@@ -305,7 +358,13 @@ def update_menu(
         cooking_time_minutes: Time in minutes
         target_role: IBU, ANAK, or ALL
         is_active: Whether menu is active
-        ingredients: List of {ingredient_id, quantity_g} (replaces all)
+        ingredients: List of {ingredient_id, quantity_g, display_quantity} (replaces all)
+        nutrition_is_manual: Whether to use manual nutrition values
+        serving_unit: Unit of serving
+        manual_calories: Manual calorie value
+        manual_protein_g: Manual protein value
+        manual_carbs_g: Manual carbs value
+        manual_fat_g: Manual fat value
         
     Returns:
         True if successful, False if menu not found
@@ -337,6 +396,20 @@ def update_menu(
     if is_active is not None:
         menu.is_active = is_active
     
+    # Update manual nutrition fields
+    if nutrition_is_manual is not None:
+        menu.nutrition_is_manual = nutrition_is_manual
+    if serving_unit is not None:
+        menu.serving_unit = serving_unit
+    if manual_calories is not None:
+        menu.manual_calories = manual_calories
+    if manual_protein_g is not None:
+        menu.manual_protein_g = manual_protein_g
+    if manual_carbs_g is not None:
+        menu.manual_carbs_g = manual_carbs_g
+    if manual_fat_g is not None:
+        menu.manual_fat_g = manual_fat_g
+    
     # Update ingredients if provided
     if ingredients is not None:
         # Delete existing ingredients
@@ -346,12 +419,14 @@ def update_menu(
         for item in ingredients:
             ingredient_id = item.get("ingredient_id")
             quantity_g = item.get("quantity_g")
+            display_quantity = item.get("display_quantity")
             
-            if ingredient_id and quantity_g:
+            if ingredient_id:
                 db.session.add(FoodMenuIngredient(
                     menu_id=menu.id,
                     ingredient_id=ingredient_id,
-                    quantity_g=quantity_g
+                    quantity_g=quantity_g,
+                    display_quantity=display_quantity
                 ))
     
     db.session.commit()
