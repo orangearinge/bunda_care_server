@@ -5,7 +5,10 @@ from app.controllers.admin_user_controller import (
     get_user_detail_handler,
     update_user_role_handler
 )
-from app.controllers.feedback_controller import admin_list_feedbacks_handler
+from app.controllers.feedback_controller import (
+    admin_list_feedbacks_handler,
+    reanalyze_feedback_handler
+)
 from app.controllers.dashboard_controller import get_stats_handler, get_user_growth_handler
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
@@ -33,6 +36,12 @@ def admin_health():
 @require_admin
 def list_feedbacks():
     return admin_list_feedbacks_handler()
+
+@admin_bp.route("/feedbacks/<int:id>/analyze", methods=["POST"])
+@require_admin
+def analyze_feedback(id):
+    """Trigger manual AI analysis for a specific feedback."""
+    return reanalyze_feedback_handler(id)
 
 @admin_bp.route("/dashboard/stats", methods=["GET"])
 @require_admin

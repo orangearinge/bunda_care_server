@@ -118,3 +118,35 @@ def get_my_feedbacks_handler():
             "has_prev": pagination.has_prev
         }
     })
+
+def reanalyze_feedback_handler(id):
+    """
+    Manually trigger AI analysis for a specific feedback.
+    """
+    from app.services.ai_feedback_service import classify_feedback
+    from app.extensions import db
+    
+    feedback = Feedback.query.get(id)
+    if not feedback:
+        return error("NOT_FOUND", "Feedback not found", 404)
+        
+    if not feedback.comment:
+        return error("VALIDATION_ERROR", "Feedback has no comment to analyze", 400)
+        
+    try:
+        # Panggil service AI secara langsung
+        classification = classify_feedback(feedback.comment)
+        
+        if classification:
+            feedback.classification = classification
+            db.session.commit()
+            return ok({
+                "id": feedback.id,
+                "classification": feedback.classification,
+                "message": "Analysis completed successfully"
+            })
+        else:
+            return error("AI_ERROR", "AI service failed to classify feedback", 500)
+            
+    except Exception as e:
+        return error("UNKNOWN_ERROR", str(e), 500)
