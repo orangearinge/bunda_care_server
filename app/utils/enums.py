@@ -4,7 +4,7 @@ class UserRole(str, Enum):
     IBU_HAMIL = "IBU_HAMIL"
     IBU_MENYUSUI = "IBU_MENYUSUI"
     ANAK_BATITA = "ANAK_BATITA"
-    ANAK_BALITA = "ANAK_BALITA" # Keep for compatibility if needed
+    
 
 class TargetRole(str, Enum):
     IBU = "IBU"

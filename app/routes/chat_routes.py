@@ -52,7 +52,7 @@ def chat():
                     user_context += f"Usia Kehamilan: {pref.gestational_age_weeks} minggu\n"
                 if pref.lila_cm:
                     user_context += f"LiLA: {pref.lila_cm} cm\n"
-            elif pref.role == 'ANAK_BALITA':
+            elif pref.role == 'ANAK_BATITA':
                 age_str = ""
                 if pref.age_year: age_str += f"{pref.age_year} tahun "
                 if pref.age_month: age_str += f"{pref.age_month} bulan"

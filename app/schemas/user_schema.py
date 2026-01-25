@@ -25,7 +25,6 @@ class UserPreferenceSchema(Schema):
             UserRole.IBU_HAMIL.value: ["weight_kg", "height_cm", "age_year", "hpht", "lila_cm"],
             UserRole.IBU_MENYUSUI.value: ["weight_kg", "height_cm", "age_year", "lactation_phase"],
             UserRole.ANAK_BATITA.value: ["weight_kg", "height_cm", "age_year", "age_month"],
-            UserRole.ANAK_BALITA.value: ["weight_kg", "height_cm", "age_year"],
         }
 
         if role in requirements:

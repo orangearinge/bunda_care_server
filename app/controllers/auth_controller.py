@@ -22,9 +22,6 @@ def check_user_preferences_status(user_id):
         UserRole.IBU_MENYUSUI: [
             "weight_kg", "height_cm", "age_year", "lactation_phase"
         ],
-        UserRole.ANAK_BALITA: [
-            "weight_kg", "height_cm", "age_year"
-        ],
         UserRole.ANAK_BATITA: [
             "weight_kg", "height_cm", "age_year", "age_month"
         ],
