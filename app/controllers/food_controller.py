@@ -109,7 +109,29 @@ def recommendation_handler():
     # Parse detected ingredients
     detected_ids = parse_detected_ids_from_query()
     detected_ids.update(parse_detected_ids_from_body(json_body() or {}))
+
+    # Parse parameters from query string
+    from app.services.food_constants import (
+        DEFAULT_BOOST_PER_HIT, DEFAULT_BOOST_PER_100G, 
+        DEFAULT_MIN_HITS, DEFAULT_OPTIONS_PER_MEAL
+    )
     
+    meal_type = request.args.get("meal_type")
+    boost_per_hit = arg_int("boost_per_hit", DEFAULT_BOOST_PER_HIT)
+    boost_per_100g = arg_int("boost_per_100g", DEFAULT_BOOST_PER_100G)
+    min_hits = arg_int("min_hits", DEFAULT_MIN_HITS)
+    options_per_meal = arg_int("options_per_meal", DEFAULT_OPTIONS_PER_MEAL)
+    
+    require_detected_param = request.args.get("require_detected")
+    require_detected = (
+        None if require_detected_param is None 
+        else (require_detected_param.lower() == "true")
+    )
+    
+    boost_by_quantity = (
+        request.args.get("boost_by_quantity", "true").lower() == "true"
+    )
+
     try:
         result = generate_meal_recommendations(
             user_id=user_id,
@@ -118,7 +140,14 @@ def recommendation_handler():
             menus=menus,
             ingredient_map=ingredient_map,
             composition_by_menu=composition_by_menu,
-            detected_ids=detected_ids
+            detected_ids=detected_ids,
+            boost_per_hit=boost_per_hit,
+            boost_per_100g=boost_per_100g,
+            min_hits=min_hits,
+            options_per_meal=options_per_meal,
+            require_detected=require_detected,
+            boost_by_quantity=boost_by_quantity,
+            meal_type_filter=meal_type
         )
         return ok(result)
     except Exception as e:
