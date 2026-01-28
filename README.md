@@ -32,6 +32,31 @@ Backend API untuk aplikasi Bunda Care dibangun menggunakan Flask.
    pip install -r requirements.txt
    ```
 
+## Setup via Docker (Direkomendasikan)
+
+Jika Anda ingin menjalankan aplikasi di dalam container:
+
+1. **Jalankan aplikasi**:
+   ```bash
+   docker compose up --build
+   ```
+
+2. **Mode Development (dengan fitur Watch/Auto-sync)**:
+   Aplikasi akan otomatis mendeteksi perubahan file tanpa restart container:
+   ```bash
+   docker compose watch
+   ```
+
+3. **Database Migration via Docker**:
+   ```bash
+   docker exec -it bunda_care_server flask db upgrade
+   ```
+
+4. **Membuat Admin via Docker**:
+   ```bash
+   docker exec -it bunda_care_server python create_admin.py
+   ```
+
 ## Konfigurasi
 
 1. Salin file `.env.example` menjadi `.env`:
