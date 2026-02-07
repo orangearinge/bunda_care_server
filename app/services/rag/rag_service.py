@@ -1,6 +1,6 @@
 import os
 import re
-from collections import Counter
+from typing import List, Dict, Optional, Any
 from google import genai
 from google.genai import types
 from flask import current_app
@@ -15,16 +15,18 @@ class RAGService:
     dan Pencarian Keyword untuk akurasi maksimal.
     """
     
-    def __init__(self, data_dir=None):
-        self.chunks = []
-        self.client = None
+    def __init__(self, data_dir: Optional[str] = None):
+        self.chunks: List[str] = []
+        self.client: Optional[genai.Client] = None
         self.processor = DocumentProcessor()
         self.vector_store = VectorStore()
         self.data_dir = data_dir
         
-        self.stopwords = {'yang', 'dan', 'di', 'ke', 'dari', 'pada', 'untuk', 'adalah', 
-                          'dengan', 'atau', 'ini', 'itu', 'dalam', 'akan', 'telah', 
-                          'juga', 'oleh', 'sebagai', 'dapat', 'karena', 'apa', 'bagaimana'}
+        self.stopwords = {
+            'yang', 'dan', 'di', 'ke', 'dari', 'pada', 'untuk', 'adalah', 
+            'dengan', 'atau', 'ini', 'itu', 'dalam', 'akan', 'telah', 
+            'juga', 'oleh', 'sebagai', 'dapat', 'karena', 'apa', 'bagaimana'
+        }
         
         api_key = current_app.config.get("GEMINI_API_KEY")
         if api_key:
@@ -33,80 +35,117 @@ class RAGService:
         if data_dir and os.path.exists(data_dir):
             self._load_data(data_dir)
     
-    def _load_data(self, data_dir):
-        """Load data menggunakan DocumentProcessor dan siapkan VectorStore."""
+    def _load_data(self, data_dir: str) -> None:
+        """
+        Load data menggunakan DocumentProcessor dan siapkan VectorStore.
+        
+        Args:
+            data_dir: Direktori tempat menyimpan file dataset dan index.
+        """
         csv_path = os.path.join(data_dir, 'dataset_final.csv')
         index_path = os.path.join(data_dir, 'bunda_care_vector')
         
         if os.path.exists(csv_path):
             # 1. Load teks asli menggunakan processor
             self.chunks = self.processor.load_csv(csv_path)
-            print(f"Loaded {len(self.chunks)} chunks from CSV using DocumentProcessor")
+            current_app.logger.info(f"Loaded {len(self.chunks)} chunks from CSV using DocumentProcessor")
             
             # 2. Coba load index FAISS jika sudah ada, jika tidak, buat baru
             if os.path.exists(f"{index_path}.index"):
-                print("Loading existing vector index...")
+                current_app.logger.info("Loading existing vector index...")
                 self.vector_store.load(index_path)
             else:
-                print("Building new vector index (this may take a moment)...")
+                current_app.logger.info("Building new vector index (this may take a moment)...")
                 self.vector_store.create_index(self.chunks)
                 self.vector_store.save(index_path)
         else:
-            print(f"CSV file not found: {csv_path}")
+            current_app.logger.error(f"CSV file not found: {csv_path}")
     
-    def _normalize_text(self, text):
-        """Normalisasi text untuk matching yang lebih baik."""
+    def _normalize_text(self, text: str) -> str:
+        """
+        Normalisasi text untuk matching yang lebih baik.
+        
+        Args:
+            text: Teks yang akan dinormalisasi.
+            
+        Returns:
+            str: Teks hasil normalisasi (lowercase, single spacing).
+        """
         text = text.lower()
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
     
-    def _extract_keywords(self, text):
-        """Extract keywords dengan filtering stopwords."""
+    def _extract_keywords(self, text: str) -> List[str]:
+        """
+        Extract keywords dengan filtering stopwords.
+        
+        Args:
+            text: Teks yang akan diekstrak kata kuncinya.
+            
+        Returns:
+            List[str]: Kumpulan kata kunci yang relevan.
+        """
         text = self._normalize_text(text)
         words = re.findall(r'\b\w+\b', text)
         keywords = [w for w in words if w not in self.stopwords and len(w) > 2]
         return keywords
     
-    def _calculate_keyword_score(self, chunk, query_keywords):
-        """Hitung skor relevansi berbasis kata kunci."""
+    def _calculate_keyword_score(self, chunk: str, query_keywords: List[str]) -> float:
+        """
+        Hitung skor relevansi berbasis kata kunci.
+        
+        Args:
+            chunk: Potongan teks yang akan dinilai.
+            query_keywords: Daftar kata kunci pencarian.
+            
+        Returns:
+            float: Skor relevansi.
+        """
         chunk_lower = self._normalize_text(chunk)
         score = 0
         
         for keyword in query_keywords:
             count = chunk_lower.count(keyword)
             if count > 0:
+                # Skor dasar + bonus frekuensi melambat (sqrt)
                 score += (count * 10) + (count ** 0.5 * 5)
                 try:
+                    # Bonus untuk kata kunci yang muncul di awal paragraf
                     position = chunk_lower.index(keyword)
                     position_bonus = max(0, 50 - (position / 10))
                     score += position_bonus
                 except ValueError:
                     pass
         
+        # Bonus tambahan untuk exact sequence match
         query_text = ' '.join(query_keywords)
         if query_text in chunk_lower:
             score += 100
         
         return score
     
-    def rag_search(self, query):
+    def rag_search(self, query: str) -> str:
         """
         Hybrid Search: Menggabungkan kelebihan Vector Search dan Keyword Search.
+        
+        Args:
+            query: Pertanyaan atau kata kunci pencarian.
+            
+        Returns:
+            str: Gabungan chunks terbaik yang dipisahkan oleh '---'.
         """
         if not self.chunks:
             return ""
         
         # 1. Semantic Search (Model AI)
-        # Menemukan hasil yang mirip secara makna meski kata-katanya berbeda
         semantic_results = self.vector_store.search(query, top_k=10)
         
         # 2. Keyword Search (Manual)
-        # Menemukan hasil yang mengandung kata-kata spesifik yang tepat
         query_keywords = self._extract_keywords(query)
         if not query_keywords:
             query_keywords = [self._normalize_text(query)]
             
-        scored_chunks = {}
+        scored_chunks: Dict[str, float] = {}
         
         # Beri skor awal dari hasil semantic search
         for i, chunk in enumerate(semantic_results):
@@ -131,8 +170,18 @@ class RAGService:
         
         return "\n---\n".join(top_chunks)
     
-    def generate_answer(self, query, context, user_context=None):
-        """Menghasilkan jawaban yang akurat dan informatif menggunakan Gemini."""
+    def generate_answer(self, query: str, context: str, user_context: Optional[str] = None) -> str:
+        """
+        Menghasilkan jawaban yang akurat dan informatif menggunakan Gemini.
+        
+        Args:
+            query: Pertanyaan user.
+            context: Konteks dari database (RAG).
+            user_context: Profil user untuk personalksasi.
+            
+        Returns:
+            str: Jawaban asisten.
+        """
         if not self.client:
             return "Konfigurasi AI belum lengkap. Silakan periksa GEMINI_API_KEY di pengaturan."
 
@@ -161,7 +210,7 @@ class RAGService:
         
         full_prompt = (
             f"{system_prompt}\n\n"
-            f"PROFIL PENGGUNA (Gunakan untuk jawaban personal jika relevan):\n"
+            f"PROFIL PENGGUNA:\n"
             f"{user_context if user_context else 'Data profil tidak tersedia.'}\n\n"
             f"KONTEKS DARI DATABASE BUNDA CARE:\n"
             f"{context}\n\n"
@@ -191,12 +240,12 @@ class RAGService:
             
             if response and response.text:
                 return response.text.strip()
-            else:
-                current_app.logger.warning(f"Empty response from Gemini for query: {query}")
-                return (
-                    "Maaf Bunda, saya mengalami kendala dalam memproses jawaban saat ini. "
-                    "Silakan coba beberapa saat lagi atau hubungi administrator jika masalah berlanjut."
-                )
+            
+            current_app.logger.warning(f"Empty response from Gemini for query: {query}")
+            return (
+                "Maaf Bunda, saya mengalami kendala dalam memproses jawaban saat ini. "
+                "Silakan coba beberapa saat lagi atau hubungi administrator jika masalah berlanjut."
+            )
                 
         except Exception as e:
             current_app.logger.error(f"Gemini API Error: {str(e)}")
@@ -205,9 +254,16 @@ class RAGService:
                 "Tim kami telah mencatat masalah ini. Silakan coba lagi dalam beberapa saat."
             )
 
-    def chat(self, query, user_context=None):
+    def chat(self, query: str, user_context: Optional[str] = None) -> str:
         """
         Entry point utama untuk RAG chat.
+        
+        Args:
+            query: Pertanyaan user.
+            user_context: Profil user optional.
+            
+        Returns:
+            str: Jawaban final dari AI.
         """
         if not query or len(query.strip()) < 3:
             return "Maaf Bunda, pertanyaan terlalu pendek. Silakan jelaskan pertanyaan Bunda dengan lebih detail."
